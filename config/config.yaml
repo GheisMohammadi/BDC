@@ -1,0 +1,22 @@
+#Note: yaml doesn't support tab, use spaces instead
+
+Env: dev
+Name: dev.configs
+ID:  node1
+
+MiningSet:
+  Enabled: true
+
+RpcSet:
+  Enabled: true
+  Port: 3000
+
+Storage:
+  type: 1         #1: LEVEL_DB
+  DBName: "badcoin"
+  Collections:
+    Blocks: "blocks"
+    UTXO: "chainstate"
+    TXsMemPool: "txmempool"
+    BlockIndex: "blockindex"
+    Stats:      "stats"
