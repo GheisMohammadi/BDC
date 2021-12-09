@@ -18,7 +18,8 @@ import (
 	number "badcoin/src/helper/number"
 
 	block "badcoin/src/block"
-	"badcoin/src/helper/hash"
+	errors "badcoin/src/helper/error"
+	hash "badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	transaction "badcoin/src/transaction"
 
@@ -30,6 +31,7 @@ type Blockchain struct {
 	GenesisBlock *block.Block
 	ChainDB      blockservice.BlockService //block store to fetch blocks from nodes
 	Blockstore   blockstore.Blockstore     //block store to fetch data locally
+	BlockIndex   map[uint64]hash.Hash
 }
 
 func Init() {
@@ -46,6 +48,7 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 
 	// wrap the datastore in a 'content addressed blocks' layer
 	blocks := blockstore.NewBlockstore(dstore)
+	blockindex := make(map[uint64]hash.Hash)
 
 	// now heres where it gets a bit weird. Its currently rather annoying to set up a bitswap instance.
 	// Bitswap wants a datastore, and a 'network'. Bitswaps network instance
@@ -65,13 +68,14 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 	genesis := CreateGenesisBlock(configs.Genesis.Nonce)
 
 	// make sure the genesis block is in our local blockstore
-	PutBlock(blockserviceice, genesis)
+	PutBlock(blockserviceice, blockindex, genesis)
 
 	return &Blockchain{
 		GenesisBlock: genesis,
 		Head:         genesis,
 		ChainDB:      blockserviceice,
 		Blockstore:   blocks,
+		BlockIndex:   blockindex,
 	}
 }
 
@@ -93,7 +97,7 @@ func LoadBlock(bs blockservice.BlockService, h *hash.Hash) (*block.Block, error)
 	return &out, nil
 }
 
-func PutBlock(bs blockservice.BlockService, blk *block.Block) (*cid.Cid, error) {
+func PutBlock(bs blockservice.BlockService, bi map[uint64]hash.Hash, blk *block.Block) (*cid.Cid, error) {
 	nd, err := cbor.WrapObject(blk, multihash.BLAKE2B_MIN+31, 32)
 	if err != nil {
 		return nil, err
@@ -102,6 +106,7 @@ func PutBlock(bs blockservice.BlockService, blk *block.Block) (*cid.Cid, error) 
 	if err := bs.AddBlock(context.Background(), nd); err != nil {
 		return nil, err
 	}
+	bi[blk.Height] = blk.GetHash()
 	cid := nd.Cid()
 	return &cid, nil
 }
@@ -127,6 +132,20 @@ func CreateGenesisBlock(nonce int64) *block.Block {
 
 func (chain *Blockchain) GetChainTip() *block.Block {
 	return chain.Head
+}
+
+func (chain *Blockchain) GetBlock(height uint64) (*block.Block, error) {
+	if height==0 {
+		return chain.GenesisBlock,nil
+	}
+	if height < 0 || height > chain.Head.Height {
+		return nil, errors.InvalidHeight
+	}
+	blockhash := chain.BlockIndex[height]
+	if blockhash.String()==hash.ZeroHash().String() {
+		return nil, errors.InvalidHeight
+	}
+	return LoadBlock(chain.ChainDB,&blockhash)
 }
 
 func validateTransactions(txs []transaction.Transaction) bool {
@@ -190,7 +209,7 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 		blkCopy := *blk
 		chain.Head = &blkCopy
 		logger.Info("Block accepted, chain head set to block:", string(blkCopy.Serialize()))
-		cid, err := PutBlock(chain.ChainDB, &blkCopy)
+		cid, err := PutBlock(chain.ChainDB, chain.BlockIndex, &blkCopy)
 		if err != nil {
 			return nil
 		}

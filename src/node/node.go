@@ -136,6 +136,10 @@ func (node *Node) BroadcastBlock(block *block.Block) {
 	node.pubsub.Publish("blocks", data)
 }
 
+func (node *Node) GetBlock(height uint64) (*block.Block, error) {
+	return node.blockchain.GetBlock(height)
+}
+
 func (node *Node) GetNewAddress() *NewAddressResponse {
 	var res NewAddressResponse
 	addr := node.wallet.GetNewAddress()

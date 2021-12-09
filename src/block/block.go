@@ -2,7 +2,6 @@ package block
 
 import (
 	"badcoin/src/transaction"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -63,7 +62,7 @@ func DeserializeBlock(buf []byte) (*Block, error) {
 }
 
 func (b *Block) CalcHash() hash.Hash {
-	return sha256.Sum256(b.Serialize())
+	return hash.HashH(b.Serialize())
 }
 
 func (b *Block) GetHash() hash.Hash {

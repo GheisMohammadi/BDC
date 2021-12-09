@@ -35,6 +35,9 @@ func MakeMuxRouter(server *Server) http.Handler {
 	//Setup Get Endpoints
 	muxRouter.HandleFunc("/", server.HandleHealthCheck).Methods("GET")
 	muxRouter.HandleFunc("/info", server.HandleGetInfo).Methods("GET")
+	muxRouter.HandleFunc("/block", server.HandleGetBlock).Methods("GET")
+	muxRouter.HandleFunc("/genesis", server.HandleGetGenesis).Methods("GET")
+
 	//Setup Post Endpoints
 	muxRouter.HandleFunc("/tx/send", server.HandleSendTx).Methods("POST")
 	muxRouter.HandleFunc("/address/new", server.HandleNewAddress).Methods("POST")
@@ -100,6 +103,46 @@ func (srv *Server) HandleGetInfo(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	// fmt.Fprintf(w, string(res))
+}
+
+func (srv *Server) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
+	logger.Info("Call getblock")
+	qh, ok := r.URL.Query()["height"]
+	if !ok {
+		panic("invalid height")
+	}
+	
+	qhi,errConversion := strconv.Atoi(qh[0])
+	if errConversion!=nil {
+	
+		panic("invalid height")
+	}
+
+	height := uint64(qhi)
+
+	data,errGetBlock := srv.Node.GetBlock(height)
+	if errGetBlock!=nil {
+		panic(errGetBlock)
+	}
+	err := json.NewEncoder(w).Encode(data)
+	// res, err := json.Marshal(node.GetInfo())
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Fprintf(w, string(res))
+}
+
+
+func (srv *Server) HandleGetGenesis(w http.ResponseWriter, r *http.Request) {
+	data,errGetBlock := srv.Node.GetBlock(0)
+	if errGetBlock!=nil {
+		panic(errGetBlock)
+	}
+	err := json.NewEncoder(w).Encode(data)
+	// res, err := json.Marshal(node.GetInfo())
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (srv *Server) HandleNewAddress(w http.ResponseWriter, r *http.Request) {
