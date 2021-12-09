@@ -13,3 +13,10 @@ func TestHash_IsEqual(t *testing.T) {
 	fmt.Println(hOne)
 	fmt.Println(ZeroHash())
 }
+
+func TestHashCid(t *testing.T) {
+	hOne := *ZeroHash()
+
+	fmt.Println(hOne.ToCid())
+
+}

@@ -6,3 +6,4 @@ import (
 
 var BlockNotFount = errors.New("Block is not found")
 var StorageInitFailed = errors.New("storage initialization failed")
+var InvalidHash = errors.New("Invalid hash")
