@@ -8,6 +8,7 @@ import (
 
 	block "badcoin/src/block"
 	blockchain "badcoin/src/blockchain"
+	"badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	mempool "badcoin/src/mempool"
 	transaction "badcoin/src/transaction"
@@ -123,10 +124,11 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 func (node *Node) CreateNewBlock() *block.Block {
 	var blk block.Block
 	cid := node.blockchain.Head.GetCid()
-	blk.PrevHash = &cid
+	h,_ := hash.FromCid(&cid)
+	blk.PrevHash = *h
 	blk.Transactions = node.mempool.SelectTransactions()
 	blk.Height = node.blockchain.Head.Height + 1
-	blk.Time = uint64(time.Now().Unix())
+	blk.Timestamp = uint64(time.Now().Unix())
 	return &blk
 }
 
@@ -135,8 +137,8 @@ func (node *Node) BroadcastBlock(block *block.Block) {
 	node.pubsub.Publish("blocks", data)
 }
 
-func (node *Node) GetNewAddress() *GetNewAddressResponse {
-	var res GetNewAddressResponse
+func (node *Node) GetNewAddress() *NewAddressResponse {
+	var res NewAddressResponse
 	addr := node.wallet.GetNewAddress()
 	res.Address = addr
 	return &res

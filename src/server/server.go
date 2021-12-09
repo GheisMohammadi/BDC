@@ -31,10 +31,13 @@ type Message struct {
 func MakeMuxRouter(server *Server) http.Handler {
 
 	muxRouter := mux.NewRouter()
+
+	//Setup Get Endpoints
 	muxRouter.HandleFunc("/", server.HandleHealthCheck).Methods("GET")
-	muxRouter.HandleFunc("/tx/send", server.HandleSendTx).Methods("POST")
 	muxRouter.HandleFunc("/info", server.HandleGetInfo).Methods("GET")
-	muxRouter.HandleFunc("/address/new", server.HandleSendTx).Methods("POST")
+	//Setup Post Endpoints
+	muxRouter.HandleFunc("/tx/send", server.HandleSendTx).Methods("POST")
+	muxRouter.HandleFunc("/address/new", server.HandleNewAddress).Methods("POST")
 
 	return muxRouter
 }

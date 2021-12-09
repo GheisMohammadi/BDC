@@ -15,6 +15,7 @@ import (
 	multihash "github.com/multiformats/go-multihash"
 
 	block "badcoin/src/block"
+	"badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	transaction "badcoin/src/transaction"
 
@@ -71,11 +72,12 @@ func NewBlockchain(h host.Host) *Blockchain {
 	}
 }
 
-func LoadBlock(bs blockservice.BlockService, c *cid.Cid) (*block.Block, error) {
+func LoadBlock(bs blockservice.BlockService, h *hash.Hash) (*block.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	data, err := bs.GetBlock(ctx, *c)
+	blkcid, _ := h.ToCid()
+	data, err := bs.GetBlock(ctx, *blkcid)
 	if err != nil {
 		return nil, err
 	}
@@ -103,8 +105,8 @@ func PutBlock(bs blockservice.BlockService, blk *block.Block) (*cid.Cid, error) 
 
 func CreateGenesisBlock() *block.Block {
 	genesisBlock := &block.Block{
-		Height: 0,
-		Time:   42,
+		Height:    0,
+		Timestamp: 42,
 	}
 	return genesisBlock
 }
@@ -127,7 +129,9 @@ func (chain *Blockchain) ValidateBlock(blk *block.Block) bool {
 		logger.Info("Block validation failed: Height is less than chaintip")
 		return false
 	}
-	if !blk.PrevHash.Equals(chainTip.GetCid()) {
+	tipCid := chainTip.GetCid()
+	tipHash, _ := hash.FromCid(&tipCid)
+	if !blk.PrevHash.IsEqual(tipHash) {
 		logger.Info("Block validation failed: Invalid PrevHash")
 		return false
 	}
@@ -135,7 +139,7 @@ func (chain *Blockchain) ValidateBlock(blk *block.Block) bool {
 		logger.Info("Block validation failed: Block Contains invalid tx")
 		return false
 	}
-	if blk.Time < chainTip.Time {
+	if blk.Timestamp < chainTip.Timestamp {
 		logger.Info("Block validation failed: Invalid Time")
 		return false
 	}
@@ -153,7 +157,7 @@ func (chain *Blockchain) rollback(oldBlock *block.Block, newBlock *block.Block) 
 	} else {
 		newChain = append(newChain, newBlock)
 		// Get the missing parent blocks by prevHash of newBlock
-		prevBlock, err := LoadBlock(chain.ChainDB, newBlock.PrevHash)
+		prevBlock, err := LoadBlock(chain.ChainDB, &newBlock.PrevHash)
 		if err != nil {
 			logger.Info("Fetching parent hashes of block failed -- aborting rollback:", err)
 			return nil, err
@@ -164,7 +168,8 @@ func (chain *Blockchain) rollback(oldBlock *block.Block, newBlock *block.Block) 
 
 func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 	if chain.ValidateBlock(blk) {
-		if blk.Height > chain.Head.Height+1 && *blk.PrevHash != chain.Head.GetCid() {
+		prevcid, _ := blk.PrevHash.ToCid()
+		if blk.Height > chain.Head.Height+1 && *prevcid != chain.Head.GetCid() {
 			// rollback chain if prevhash is not chaintip hash
 			chain.rollback(chain.Head, blk)
 		}
@@ -183,7 +188,8 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 func (chain *Blockchain) SyncChain(from *block.Block) error {
 	cur := from
 	for {
-		haveParent, err := chain.Blockstore.Has(context.Background(), *cur.PrevHash)
+		prevcid, _ := cur.PrevHash.ToCid()
+		haveParent, err := chain.Blockstore.Has(context.Background(), *prevcid)
 		if err != nil {
 			return err
 		}
@@ -191,8 +197,9 @@ func (chain *Blockchain) SyncChain(from *block.Block) error {
 		if haveParent {
 			return nil
 		}
-
-		next, err := LoadBlock(chain.ChainDB, from.PrevHash)
+		
+		fromhash:= from.PrevHash
+		next, err := LoadBlock(chain.ChainDB, &fromhash)
 		if err != nil {
 			return err
 		}
