@@ -3,3 +3,4 @@ vendor
 .env
 badcoin
 data
+data/*

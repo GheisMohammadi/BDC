@@ -1,13 +1,15 @@
 package node
 
 import (
+	config "badcoin/src/config"
 	"context"
 	"testing"
 )
 
 func TestBlockchain(t *testing.T) {
 	ctx := context.Background()
-	testNode := CreateNewNode(ctx)
+	configs, _ := config.Init("")
+	testNode := CreateNewNode(ctx, configs)
 	testNode.StartMiner()
 	t.Log(testNode)
 }
