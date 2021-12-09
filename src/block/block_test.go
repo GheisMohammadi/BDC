@@ -9,7 +9,7 @@ func TestHashBlock(t* testing.T){
     blk := &Block{
         Transactions: nil,
         Height: 100,
-        Time: 42,
+        Timestamp: 42,
     }
     hash := blk.GetHash()
     fmt.Println(hash)
