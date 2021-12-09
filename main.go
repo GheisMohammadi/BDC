@@ -38,7 +38,7 @@ func main() {
 
 	//create Node
 	ctx := context.Background()
-	node := node.CreateNewNode(ctx)
+	node := node.CreateNewNode(ctx,Configs)
 
 	//Start server
 	srv := server.CreateNewServer(ctx,node,"3000")

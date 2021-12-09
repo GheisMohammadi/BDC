@@ -8,11 +8,12 @@ import (
 
 	block "badcoin/src/block"
 	blockchain "badcoin/src/blockchain"
-	"badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	mempool "badcoin/src/mempool"
 	transaction "badcoin/src/transaction"
 	wallet "badcoin/src/wallet"
+
+	config "badcoin/src/config"
 
 	ipfsaddr "github.com/ipfs/go-ipfs-addr"
 	libp2p "github.com/libp2p/go-libp2p"
@@ -29,7 +30,7 @@ type Node struct {
 	wallet     *wallet.Wallet
 }
 
-func CreateNewNode(ctx context.Context) *Node {
+func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 	var node Node
 
 	newNode, err := libp2p.New(libp2p.Defaults)
@@ -43,7 +44,7 @@ func CreateNewNode(ctx context.Context) *Node {
 	}
 
 	for i, addr := range newNode.Addrs() {
-		logger.Info(i,": ",addr,"/ipfs/",newNode.ID().Pretty())
+		logger.Info(i, ": ", addr, "/ipfs/", newNode.ID().Pretty())
 	}
 
 	if len(os.Args) > 1 {
@@ -60,7 +61,7 @@ func CreateNewNode(ctx context.Context) *Node {
 		//panic(err)
 	}
 
-	blockchain := blockchain.NewBlockchain(newNode)
+	blockchain := blockchain.NewBlockchain(newNode, configs)
 
 	node.p2pNode = newNode
 	node.mempool = mempool.NewMempool()
@@ -90,7 +91,7 @@ func (node *Node) ListenBlocks(ctx context.Context) {
 				panic(err)
 			}
 			// logger.Info("Block received over network:", string(blk.Serialize()))
-			logger.Info("Block received over network, blockhash", blk.GetCid())
+			logger.Info("Block received over network, blockhash: ", blk.GetHash().String())
 			cid := node.blockchain.AddBlock(blk)
 			if cid != nil {
 				logger.Info("Block added, cid:", cid)
@@ -123,9 +124,7 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 
 func (node *Node) CreateNewBlock() *block.Block {
 	var blk block.Block
-	cid := node.blockchain.Head.GetCid()
-	h,_ := hash.FromCid(&cid)
-	blk.PrevHash = *h
+	blk.PrevHash = node.blockchain.Head.GetHash()
 	blk.Transactions = node.mempool.SelectTransactions()
 	blk.Height = node.blockchain.Head.Height + 1
 	blk.Timestamp = uint64(time.Now().Unix())

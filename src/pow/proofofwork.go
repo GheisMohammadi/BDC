@@ -67,9 +67,9 @@ func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struc
 		default:
 			hash = pow.calculateHash(prevBlockHash, TXsHash, nonce)
 
-			if math.Remainder(float64(nonce), 10000) == 0 {
-				//fmt.Printf("\r%x", hash)
-			}
+			// if math.Remainder(float64(nonce), 10000) == 0 {
+			// 	//fmt.Printf("\r%x", hash)
+			// }
 
 			hashInt.SetBytes(hash[:])
 			if hashInt.Cmp(pow.target) == -1 {

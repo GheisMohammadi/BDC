@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"log"
+	"math/big"
 )
 
 func GetRandData() string {
@@ -20,4 +21,12 @@ func IntToHex(num int64) []byte {
 	}
 
 	return buff.Bytes()
+}
+
+//Int64ToByteArray is second way to convert int64 to byte array
+func Int64ToByteArray(num int64) []byte {
+	numbig := new(big.Int)
+	numbig.SetInt64(num)
+	numbytes := numbig.Bytes()
+	return numbytes
 }

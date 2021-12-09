@@ -4,6 +4,9 @@ Env: dev
 Name: dev.configs
 ID:  node1
 
+Genesis:
+  Nonce: 1337
+
 MiningSet:
   Enabled: true
 

@@ -7,9 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	mh "github.com/multiformats/go-multihash"
 	hash "badcoin/src/helper/hash"
 )
 
@@ -21,23 +18,22 @@ type Block struct {
 	Transactions []transaction.Transaction
 	MerkleRoot   hash.Hash
 	Nonce        []byte
-	Hash         hash.Hash
 	Height       uint64
 	Timestamp    uint64
 	Solution     string
-	Difficult    uint32
+	Difficulty   uint32
 }
 
 func (b *Block) String() string {
 	var lines []string
 
-	lines = append(lines, fmt.Sprintf("--- Block %x:", b.Hash))
+	lines = append(lines, fmt.Sprintf("--- Block %x:", b.GetHash()))
 
 	lines = append(lines, fmt.Sprintf("    PrevBlockHash:   %x", b.PrevHash))
-	lines = append(lines, fmt.Sprintf("    Hash:            %x", b.Hash))
+	lines = append(lines, fmt.Sprintf("    Hash:            %x", b.GetHash()))
 	lines = append(lines, fmt.Sprintf("    MerkleRoot:      %x", b.MerkleRoot))
 	lines = append(lines, fmt.Sprintf("    Timestamp:       %d", b.Timestamp))
-	lines = append(lines, fmt.Sprintf("    Difficult:       %d", b.Difficult))
+	lines = append(lines, fmt.Sprintf("    Difficulty:       %d", b.Difficulty))
 	lines = append(lines, fmt.Sprintf("    Nonce:           %d", b.Nonce))
 	lines = append(lines, fmt.Sprintf("    Height:          %d", b.Height))
 
@@ -66,18 +62,12 @@ func DeserializeBlock(buf []byte) (*Block, error) {
 	return &blk, nil
 }
 
-func (b *Block) GetCid() cid.Cid {
-	//const DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
-	nd, err := cbor.WrapObject(b, mh.SHA2_256, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return nd.Cid()
+func (b *Block) CalcHash() hash.Hash {
+	return sha256.Sum256(b.Serialize())
 }
 
-func (b *Block) GetHash() hash.Hash{
-	return sha256.Sum256(b.Serialize())
+func (b *Block) GetHash() hash.Hash {
+	return b.CalcHash()
 }
 
 func (b *Block) GetPrevHash() hash.Hash {

@@ -14,6 +14,9 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	multihash "github.com/multiformats/go-multihash"
 
+	config "badcoin/src/config"
+	number "badcoin/src/helper/number"
+
 	block "badcoin/src/block"
 	"badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
@@ -36,7 +39,7 @@ func Init() {
 	cbor.RegisterCborType(transaction.Transaction{})
 }
 
-func NewBlockchain(h host.Host) *Blockchain {
+func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 	// base backing datastore, currently just in memory, but can be swapped out
 	// easily for leveldb or other
 	dstore := datastore.NewMapDatastore()
@@ -59,7 +62,7 @@ func NewBlockchain(h host.Host) *Blockchain {
 	// 'blockservice'
 	blockserviceice := blockservice.New(blocks, bswap)
 
-	genesis := CreateGenesisBlock()
+	genesis := CreateGenesisBlock(configs.Genesis.Nonce)
 
 	// make sure the genesis block is in our local blockstore
 	PutBlock(blockserviceice, genesis)
@@ -103,10 +106,21 @@ func PutBlock(bs blockservice.BlockService, blk *block.Block) (*cid.Cid, error) 
 	return &cid, nil
 }
 
-func CreateGenesisBlock() *block.Block {
+func CreateGenesisBlock(nonce int64) *block.Block {
+	//convert nonce to byte array
+	noncebytes := number.IntToHex(nonce)
+	now := time.Now()
+	tm := now.UnixMilli()
+
 	genesisBlock := &block.Block{
-		Height:    0,
-		Timestamp: 42,
+		PrevHash:     *hash.ZeroHash(),
+		Transactions: nil,
+		MerkleRoot:   *hash.ZeroHash(),
+		Nonce:        noncebytes,
+		Height:       0,
+		Timestamp:    uint64(tm),
+		Solution:     "",
+		Difficulty:   1,
 	}
 	return genesisBlock
 }
@@ -129,9 +143,8 @@ func (chain *Blockchain) ValidateBlock(blk *block.Block) bool {
 		logger.Info("Block validation failed: Height is less than chaintip")
 		return false
 	}
-	tipCid := chainTip.GetCid()
-	tipHash, _ := hash.FromCid(&tipCid)
-	if !blk.PrevHash.IsEqual(tipHash) {
+	tipHash := chainTip.GetHash()
+	if !blk.PrevHash.IsEqual(&tipHash) {
 		logger.Info("Block validation failed: Invalid PrevHash")
 		return false
 	}
@@ -150,7 +163,7 @@ func (chain *Blockchain) rollback(oldBlock *block.Block, newBlock *block.Block) 
 	logger.Info("Rolling back...", newBlock)
 	var newChain []*block.Block
 
-	if oldBlock.GetCid() == newBlock.GetCid() {
+	if oldBlock.GetHash().String() == newBlock.GetHash().String() {
 		commonBlock := oldBlock
 		logger.Info("Blockchain rolled back to block", commonBlock)
 		return newChain, nil
@@ -168,8 +181,9 @@ func (chain *Blockchain) rollback(oldBlock *block.Block, newBlock *block.Block) 
 
 func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 	if chain.ValidateBlock(blk) {
-		prevcid, _ := blk.PrevHash.ToCid()
-		if blk.Height > chain.Head.Height+1 && *prevcid != chain.Head.GetCid() {
+		prevhash := blk.PrevHash.String()
+		headhash := chain.Head.GetHash().String()
+		if blk.Height > chain.Head.Height+1 && prevhash != headhash {
 			// rollback chain if prevhash is not chaintip hash
 			chain.rollback(chain.Head, blk)
 		}
@@ -197,8 +211,8 @@ func (chain *Blockchain) SyncChain(from *block.Block) error {
 		if haveParent {
 			return nil
 		}
-		
-		fromhash:= from.PrevHash
+
+		fromhash := from.PrevHash
 		next, err := LoadBlock(chain.ChainDB, &fromhash)
 		if err != nil {
 			return err

@@ -11,11 +11,16 @@ type Configurations struct {
 	Name       string
 	ConfigFile string
 	ID         string
+	Genesis    Genesis
 	MiningSet  MiningSet
 	RpcSet     RpcSet
 	Storage    Storage
 }
 
+//Genesis for genesis block options
+type Genesis struct {
+	Nonce   int64
+}
 // MiningSet mining config
 type MiningSet struct {
 	Enabled bool
