@@ -9,18 +9,22 @@ import (
 	hash "badcoin/src/helper/hash"
 )
 
-const genesisReward = 100
-const genesisBlockHeight = 1
+type BlockHeader struct {
+	Version    uint64
+	PrevHash   hash.Hash
+	MerkleRoot hash.Hash
+	Timestamp  uint64
+	Nonce      []byte
+	Difficulty uint32
+	Solution   string
+}
 
 type Block struct {
-	PrevHash     hash.Hash
-	Transactions []transaction.Transaction
-	MerkleRoot   hash.Hash
-	Nonce        []byte
 	Height       uint64
-	Timestamp    uint64
-	Solution     string
-	Difficulty   uint32
+	Hash         hash.Hash
+	Header       BlockHeader
+	TxsCount     uint64
+	Transactions []transaction.Transaction
 }
 
 func (b *Block) String() string {
@@ -28,12 +32,12 @@ func (b *Block) String() string {
 
 	lines = append(lines, fmt.Sprintf("--- Block %x:", b.GetHash()))
 
-	lines = append(lines, fmt.Sprintf("    PrevBlockHash:   %x", b.PrevHash))
+	lines = append(lines, fmt.Sprintf("    PrevBlockHash:   %x", b.Header.PrevHash))
 	lines = append(lines, fmt.Sprintf("    Hash:            %x", b.GetHash()))
-	lines = append(lines, fmt.Sprintf("    MerkleRoot:      %x", b.MerkleRoot))
-	lines = append(lines, fmt.Sprintf("    Timestamp:       %d", b.Timestamp))
-	lines = append(lines, fmt.Sprintf("    Difficulty:       %d", b.Difficulty))
-	lines = append(lines, fmt.Sprintf("    Nonce:           %d", b.Nonce))
+	lines = append(lines, fmt.Sprintf("    MerkleRoot:      %x", b.Header.MerkleRoot))
+	lines = append(lines, fmt.Sprintf("    Timestamp:       %d", b.Header.Timestamp))
+	lines = append(lines, fmt.Sprintf("    Difficulty:      %d", b.Header.Difficulty))
+	lines = append(lines, fmt.Sprintf("    Nonce:           %d", b.Header.Nonce))
 	lines = append(lines, fmt.Sprintf("    Height:          %d", b.Height))
 
 	lines = append(lines, fmt.Sprintf("    Transactions     %d:", len(b.Transactions)))
@@ -52,6 +56,14 @@ func (b *Block) Serialize() []byte {
 	return data
 }
 
+func (bh *BlockHeader) Serialize() []byte {
+	data, err := json.Marshal(bh)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
 func DeserializeBlock(buf []byte) (*Block, error) {
 	var blk Block
 	err := json.Unmarshal(buf, &blk)
@@ -62,7 +74,7 @@ func DeserializeBlock(buf []byte) (*Block, error) {
 }
 
 func (b *Block) CalcHash() hash.Hash {
-	return hash.HashH(b.Serialize())
+	return hash.HashH(b.Header.Serialize())
 }
 
 func (b *Block) GetHash() hash.Hash {
@@ -70,10 +82,20 @@ func (b *Block) GetHash() hash.Hash {
 }
 
 func (b *Block) GetPrevHash() hash.Hash {
-	return b.PrevHash
+	return b.Header.PrevHash
 }
 
 // SetHeight sets the height of the block
 func (b *Block) SetHeight(height uint64) {
 	b.Height = height
+}
+
+// SetHash sets the hash of the block
+func (b *Block) SetHash(h hash.Hash) {
+	b.Hash = h
+}
+
+// SetHash sets the hash of the block
+func (b *Block) UpdateHash() {
+	b.Hash = b.CalcHash()
 }

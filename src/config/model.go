@@ -19,8 +19,11 @@ type Configurations struct {
 
 //Genesis for genesis block options
 type Genesis struct {
-	Nonce   int64
+	Height 	uint64
+	Nonce  	int64
+	Reward 	uint64
 }
+
 // MiningSet mining config
 type MiningSet struct {
 	Enabled bool

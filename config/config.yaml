@@ -5,7 +5,9 @@ Name: dev.configs
 ID:  node1
 
 Genesis:
-  Nonce: 1337
+  Height: 0
+  Nonce:  1337
+  Reward: 100
 
 MiningSet:
   Enabled: true

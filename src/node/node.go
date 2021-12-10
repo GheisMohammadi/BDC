@@ -61,6 +61,7 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 		//panic(err)
 	}
 
+	blockchain.Init()
 	blockchain := blockchain.NewBlockchain(newNode, configs)
 
 	node.p2pNode = newNode
@@ -124,10 +125,10 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 
 func (node *Node) CreateNewBlock() *block.Block {
 	var blk block.Block
-	blk.PrevHash = node.blockchain.Head.GetHash()
+	blk.Header.PrevHash = node.blockchain.Head.GetHash()
 	blk.Transactions = node.mempool.SelectTransactions()
 	blk.Height = node.blockchain.Head.Height + 1
-	blk.Timestamp = uint64(time.Now().Unix())
+	blk.Header.Timestamp = uint64(time.Now().Unix())
 	return &blk
 }
 

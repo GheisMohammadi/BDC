@@ -1,14 +1,13 @@
 package node
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
 	"math/rand"
 	"time"
 
 	// "math/big"
-	logger "badcoin/src/helper/logger"
 	block "badcoin/src/block"
+	logger "badcoin/src/helper/logger"
 )
 
 func (node *Node) StartMiner() {
@@ -48,17 +47,17 @@ func isWinner(ticket string) bool {
 
 func (node *Node) FindSolsHash(c chan *block.Block) {
 	blk := node.CreateNewBlock()
-	blk.Nonce = make([]byte, 32)
+	blk.Header.Nonce = make([]byte, 32)
 	for {
-		rand.Read(blk.Nonce)
-		guess := sha256.Sum256(blk.Serialize())
+		rand.Read(blk.Header.Nonce)
+		guess := blk.CalcHash()
 		ticket := base64.StdEncoding.EncodeToString(guess[:])
 		if isWinner(ticket) {
-			blk.Solution = ticket
+			blk.Header.Solution = ticket
 			// logger.Info("Ticket:", ticket)
 			c <- blk
 			blk = node.CreateNewBlock()
-			blk.Nonce = make([]byte, 32)
+			blk.Header.Nonce = make([]byte, 32)
 		}
 	}
 }
