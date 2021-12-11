@@ -1,10 +1,7 @@
-package wallet
+package address
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/sha256"
 	"log"
 
@@ -18,23 +15,9 @@ import (
 const version = byte(0x00)
 const addressChecksumLen = 4
 
-// Wallet stores private and public keys
-type Wallet struct {
-	PrivateKey ecdsa.PrivateKey
-	PublicKey  []byte
-}
-
-// newWallet creates and returns a Wallet
-func NewWallet() *Wallet {
-	private, public := newKeyPair()
-	wallet := Wallet{private, public}
-
-	return &wallet
-}
-
-// GetStringAddress returns wallet address string format
-func (w Wallet) GetStringAddress() string {
-	return fmt.Sprintf("%s", w.GetAddress())
+// ToString returns address string format
+func ToString(addr []byte) string {
+	return fmt.Sprintf("%s", addr)
 }
 
 // GetAddress returns wallet address
@@ -43,9 +26,9 @@ func (w Wallet) GetStringAddress() string {
 // 3.get checksum，use first 4 bytes
 // 4.connect checksum to the end of the hash data
 // 5.base58 data
-func (w Wallet) GetAddress() []byte {
+func FromPublicKey(PublicKey []byte) []byte {
 	//1.hashes public key - ripemd160(sha256(public key))
-	pubKeyHash := HashPublicKey(w.PublicKey)
+	pubKeyHash := HashPublicKey(PublicKey)
 	versionedPayload := append([]byte{version}, pubKeyHash...)
 	checksum := checksum(versionedPayload)
 	fullPayload := append(versionedPayload, checksum...)
@@ -101,23 +84,4 @@ func checksum(payload []byte) []byte {
 	secondSHA := sha256.Sum256(firstSHA[:])
 
 	return secondSHA[:addressChecksumLen]
-}
-
-// newKeyPair create private&public key with ecdsa and rand-key
-func newKeyPair() (ecdsa.PrivateKey, []byte) {
-	curve := elliptic.P256()
-	private, err := ecdsa.GenerateKey(curve, rand.Reader)
-	if err != nil {
-		log.Panic(err)
-	}
-	pubKey := append(private.PublicKey.X.Bytes(), private.PublicKey.Y.Bytes()...)
-
-	return *private, pubKey
-}
-
-func (wallet *Wallet) GetNewAddress() string {
-	prv, pub := newKeyPair()
-	wallet.PrivateKey = prv
-	wallet.PublicKey = pub
-	return wallet.GetStringAddress()
 }

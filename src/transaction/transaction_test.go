@@ -5,6 +5,8 @@ import (
 )
 
 func TestBlockchain(t *testing.T) {
-	tx := NewCoinbaseTX("ABCDEF","Test Tx",100)
+	tx := Transaction {
+		
+	}
 	t.Log(tx.String())
 }

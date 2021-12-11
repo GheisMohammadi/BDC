@@ -63,7 +63,7 @@ func (ws *WalletSet) GetMinerAddress() string {
 
 // CreateWallet adds a Wallet to Wallets
 func (ws *WalletSet) CreateWallet() *Wallet {
-	wallet := newWallet()
+	wallet := NewWallet()
 	address := fmt.Sprintf("%s", wallet.GetAddress())
 
 	ws.mutex.Lock()

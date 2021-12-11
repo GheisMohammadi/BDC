@@ -8,34 +8,36 @@ import (
 	"encoding/hex"
 	"math"
 	"math/big"
+	"time"
 )
 
 var (
 	maxNonce = math.MaxInt64
 )
 
-const targetBits = 16
+const TargetBits = 16
 
 // ProofOfWork represents a proof-of-work
 type ProofOfWork struct {
-	target *big.Int
-	Nonce  int64
-	Hash   [32]byte
+	Target   *big.Int
+	Nonce    int64
+	Hash     [32]byte
+	Duration int64
 }
 
 // NewProofOfWork builds and returns a ProofOfWork
 func NewProofOfWorkT(targetBits int) *ProofOfWork {
 	target := big.NewInt(1)
-	target.Lsh(target, uint(targetBits))
-	pow := &ProofOfWork{target: target}
+	target.Lsh(target, uint(256-targetBits))
+	pow := &ProofOfWork{Target: target}
 	return pow
 }
 
 // NewProofOfWork builds and returns a ProofOfWork
 func NewProofOfWork() *ProofOfWork {
 	target := big.NewInt(1)
-	target.Lsh(target, uint(256-targetBits))
-	pow := &ProofOfWork{target: target}
+	target.Lsh(target, uint(256-TargetBits))
+	pow := &ProofOfWork{Target: target}
 	return pow
 }
 
@@ -45,7 +47,7 @@ func (pow *ProofOfWork) calculateHash(prevBlockHash, TXsHash []byte, nonce int) 
 		[][]byte{
 			prevBlockHash,
 			TXsHash,
-			number.IntToHex(int64(targetBits)),
+			number.IntToHex(int64(TargetBits)),
 			number.IntToHex(int64(nonce)),
 		},
 		[]byte{},
@@ -59,6 +61,7 @@ func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struc
 	var hashInt big.Int
 	var hash [32]byte
 	nonce := 0
+	t1 := time.Now().UnixMicro()
 	for nonce < maxNonce {
 		select {
 		case <-quit:
@@ -72,7 +75,9 @@ func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struc
 			// }
 
 			hashInt.SetBytes(hash[:])
-			if hashInt.Cmp(pow.target) == -1 {
+			if hashInt.Cmp(pow.Target) == -1 {
+				t2 := time.Now().UnixMicro()
+				pow.Duration = t2 - t1
 				pow.Nonce = int64(nonce)
 				pow.Hash = hash
 				logger.Trace("Mining SolveHash Success", nonce, hex.EncodeToString(hash[:]))
@@ -109,7 +114,7 @@ func (pow *ProofOfWork) Validate(prevBlockHash, TXsHash []byte, nonce int) bool 
 	hash := pow.calculateHash(prevBlockHash, TXsHash, nonce)
 	hashInt.SetBytes(hash[:])
 
-	isValid := hashInt.Cmp(pow.target) == -1
+	isValid := hashInt.Cmp(pow.Target) == -1
 
 	return isValid
 }

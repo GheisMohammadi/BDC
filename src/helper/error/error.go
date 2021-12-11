@@ -29,3 +29,5 @@ var MultipleCoinbases = errors.New("block contains second coinbase transaction")
 var BlockBadMerkleRoot = errors.New("block merkle root is invalid")
 
 var BlockDuplicateTx = errors.New("block contains duplicate transaction")
+
+var NotEnoughAccountBalance = errors.New("Not enough account balance")

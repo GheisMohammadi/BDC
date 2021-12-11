@@ -35,6 +35,7 @@ type Blockchain struct {
 	BlockService blockservice.BlockService //block store to fetch blocks from nodes
 	Blockstore   blockstore.Blockstore     //block store to fetch data locally
 	BlockIndex   *leveldb.DB
+	Accounts     *leveldb.DB
 }
 
 func Init() {
@@ -67,6 +68,15 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 		panic(errIndexDB)
 	}
 
+	//Accounts db
+	accPath := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_accs"
+	accFullpath, _ := filepath.Abs(accPath)
+	accDB, errAccDB := leveldb.OpenFile(accFullpath, nil)
+	if errAccDB != nil {
+		logger.Error(errAccDB)
+		panic(errAccDB)
+	}
+
 	// now heres where it gets a bit weird. Its currently rather annoying to set up a bitswap instance.
 	// Bitswap wants a datastore, and a 'network'. Bitswaps network instance
 	// wants a libp2p node and a 'content routing' instance. We don't care
@@ -84,25 +94,27 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 
 	genesis := CreateGenesisBlock(configs.Genesis.Nonce)
 
-	// make sure the genesis block is in our local blockstore
-	PutBlock(chainblockserviceice, blockindex, genesis)
-
-	return &Blockchain{
+	chain := &Blockchain{
 		GenesisBlock: genesis,
 		Head:         genesis,
 		BlockService: chainblockserviceice,
 		Blockstore:   chainblockstore,
 		BlockIndex:   blockindex,
+		Accounts:     accDB,
 	}
-}
 
-// GetUTXOSet get current bc's UTXOSet wrapper
-func (chain *Blockchain) GetUTXOSet() *transaction.UTXOSet {
-	return &transaction.UTXOSet{chain}
+	// make sure the genesis block is in our local blockstore
+	chain.PutBlock(genesis)
+
+	return chain
 }
 
 //LoadBlock loads block from local db or other nodes using block service
-func LoadBlock(bs blockservice.BlockService, bi *leveldb.DB, h *hash.Hash) (*block.Block, error) {
+func (chain *Blockchain) LoadBlock(h *hash.Hash) (*block.Block, error) {
+
+	bs := chain.BlockService
+	bi := chain.BlockIndex
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -119,7 +131,7 @@ func LoadBlock(bs blockservice.BlockService, bi *leveldb.DB, h *hash.Hash) (*blo
 
 	//if block index is passed, store index in block index db
 	if bi != nil {
-		if err := SaveBlockIndex(bi, &out); err != nil {
+		if err := chain.SaveBlockIndex(&out); err != nil {
 			return nil, err
 		}
 	}
@@ -128,7 +140,9 @@ func LoadBlock(bs blockservice.BlockService, bi *leveldb.DB, h *hash.Hash) (*blo
 }
 
 //PutBlock stores and broadcast block using block service and store it's index in block index db
-func PutBlock(bs blockservice.BlockService, bi *leveldb.DB, blk *block.Block) (*cid.Cid, error) {
+func (chain *Blockchain) PutBlock(blk *block.Block) (*cid.Cid, error) {
+	bs  := chain.BlockService
+
 	nd, err := cbor.WrapObject(blk, multihash.BLAKE2B_MIN+31, 32)
 	if err != nil {
 		return nil, err
@@ -138,7 +152,7 @@ func PutBlock(bs blockservice.BlockService, bi *leveldb.DB, blk *block.Block) (*
 		return nil, err
 	}
 
-	err = SaveBlockIndex(bi, blk)
+	err = chain.SaveBlockIndex(blk)
 	if err != nil {
 		return nil, err
 	}
@@ -147,10 +161,28 @@ func PutBlock(bs blockservice.BlockService, bi *leveldb.DB, blk *block.Block) (*
 	return &cid, nil
 }
 
-func SaveBlockIndex(bi *leveldb.DB, blk *block.Block) error {
+func (chain *Blockchain) SaveBlockIndex(blk *block.Block) error {
+
 	heightbytes := number.Int64ToByteArray(int64(blk.Height))
 	hashbytes := blk.GetHashBytes()
-	err := bi.Put(heightbytes, hashbytes, nil)
+
+	blkbytes, errGet := chain.BlockIndex.Get(hashbytes, nil)
+	if errGet == nil {
+		if len(blkbytes) > 0 {
+			return nil
+		}
+	} else if errGet != nil {
+		if errGet != leveldb.ErrNotFound {
+			return errGet
+		}
+	}
+
+	errUpdateAccounts := chain.UpdateAccounts(blk.Transactions)
+	if errUpdateAccounts!=nil {
+		return errUpdateAccounts
+	}
+
+	err := chain.BlockIndex.Put(heightbytes, hashbytes, nil)
 	if err != nil {
 		return err
 	}
@@ -202,7 +234,7 @@ func (chain *Blockchain) GetBlock(height uint64) (*block.Block, error) {
 	if blockhash.String() == hash.ZeroHash().String() {
 		return nil, errors.InvalidHeight
 	}
-	return LoadBlock(chain.BlockService, nil, blockhash)
+	return chain.LoadBlock(blockhash)
 }
 
 func validateTransactions(txs []transaction.Transaction) bool {
@@ -246,7 +278,7 @@ func (chain *Blockchain) reload(oldBlock *block.Block, newBlock *block.Block) ([
 	} else {
 		newChain = append(newChain, newBlock)
 		// Get the missing parent blocks by prevHash of newBlock
-		prevBlock, err := LoadBlock(chain.BlockService, chain.BlockIndex, &newBlock.Header.PrevHash)
+		prevBlock, err := chain.LoadBlock(&newBlock.Header.PrevHash)
 		if err != nil {
 			logger.Info("Fetching parent hashes of block failed -- aborting reload:", err)
 			return nil, err
@@ -267,7 +299,7 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 		blkCopy := *blk
 		chain.Head = &blkCopy
 		logger.Info("Block accepted, chain head set to block:", string(blkCopy.Serialize()))
-		cid, err := PutBlock(chain.BlockService, chain.BlockIndex, &blkCopy)
+		cid, err := chain.PutBlock(&blkCopy)
 		if err != nil {
 			return nil
 		}
@@ -291,7 +323,7 @@ func (chain *Blockchain) SyncChain(from *block.Block) error {
 		}
 
 		fromhash := from.Header.PrevHash
-		next, err := LoadBlock(chain.BlockService, chain.BlockIndex, &fromhash)
+		next, err := chain.LoadBlock(&fromhash)
 		if err != nil {
 			return err
 		}
@@ -300,62 +332,17 @@ func (chain *Blockchain) SyncChain(from *block.Block) error {
 	}
 }
 
-func (chain *Blockchain) FindUTXO() map[string][]transaction.TXOutput {
-	UTXO := make(map[string][]transaction.TXOutput)
-	spentTXOs := make(map[string][]int)
-	bci := chain.Iterator()
-
-	for {
-		block := bci.Next()
-
-		for _, tx := range block.Transactions {
-			txID := tx.GetTxidString()
-
-		Outputs:
-			for outIdx, out := range tx.Outputs {
-				// Was the output spent?
-				if spentTXOs[txID] != nil {
-					for _, spentOutIdx := range spentTXOs[txID] {
-						if spentOutIdx == outIdx {
-							continue Outputs
-						}
-					}
-				}
-
-				outs := UTXO[txID]
-				outs = append(outs, out)
-				UTXO[txID] = outs
-			}
-
-			if tx.IsCoinBase() == false {
-				for _, in := range tx.Inputs {
-					inTxID := in.PreviousOutPoint.StringHash()
-					spentTXOs[inTxID] = append(spentTXOs[inTxID], int(in.PreviousOutPoint.Index))
-				}
-			}
-		}
-
-		if len(block.Header.PrevHash) == 0 || block.Header.PrevHash.String() == hash.ZeroHash().String() {
-			break
-		}
+func (bc *Blockchain) GetIterator() *Iterator {
+	return &Iterator{
+		bc.Head.Hash,
+		bc,
 	}
-	return UTXO
-}
-
-// Iterator returns a BlockchainIterator
-func (chain *Blockchain) Iterator() *Iterator {
-	bci := &Iterator{
-		currentHash: chain.Head.Hash,
-		bc:          chain,
-	}
-
-	return bci
 }
 
 // GetBlockHashes returns a list of hashes with beginHash and maxNum limit
 func (bc *Blockchain) GetBlockHashes(beginHash *hash.Hash, stopHash hash.Hash, maxNum int) ([]*hash.Hash, error) {
 	var blocks []*hash.Hash
-	bci := bc.Iterator()
+	bci := bc.GetIterator()
 	err := bci.LocationHash(beginHash)
 	if err != nil {
 		return nil, err

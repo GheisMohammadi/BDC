@@ -37,14 +37,14 @@ func SendTx(c *cli.Context) error {
     } else {
         from = c.String("from")
     }
-    memo := c.String("memo")
+    data := c.String("some data")
     
     var res node.SendTxResponse
     err := Call("tx/send", map[string]string{
         "to": to, 
         "amount": amount,
         "from": from,
-        "memo": memo,
+        "data": data,
     }, &res)
     
     out, err := json.MarshalIndent(res, "","  ")

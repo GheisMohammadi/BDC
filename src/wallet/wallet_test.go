@@ -13,7 +13,7 @@ import (
 )
 
 func TestToAddress(t *testing.T) {
-	w := newWallet()
+	w := NewWallet()
 	address := string(w.GetAddress())
 	data := getEncodeBytes(w)
 	fmt.Println(save2File(address, data))

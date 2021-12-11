@@ -5,6 +5,7 @@ import (
 	node "badcoin/src/node"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -71,24 +72,28 @@ func CreateNewServer(ctx context.Context, servernode *node.Node, port string) *h
 func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 	from := r.FormValue("from")
 	to := r.FormValue("to")
-	amount := r.FormValue("amount")
-	memo := r.FormValue("memo")
+	val := r.FormValue("value")
+	data := r.FormValue("data")
 
-	logger.Info("call sendtx", from, to, amount, memo)
+	logger.Info("call sendtx ", val, " BDC from", from, " to", to)
 
-	amt, err := strconv.ParseInt(amount, 10, 64)
+	value, err := strconv.Atoi(val)
+	// amt, err := strconv.ParseInt(amount, 10, 64)
 	if err != nil {
 		panic(err)
 	}
 
-	tx := transaction.Transaction{
-		Sender:   from,
-		Receiver: to,
-		Amount:   uint64(amt),
-		Memo:     memo,
+	wallet := srv.Node.GetWallet()
+	addr := wallet.GetStringAddress()
+	if addr != from {
+		panic(errors.New("no access to this wallet address"))
 	}
+	//srv.Node.SendTransaction()
+	tx := transaction.NewTransaction(wallet.PublicKey, to, uint64(value), data)
+	tx.UpdateHash()
+	tx.Sign(wallet.PrivateKey)
 
-	err = json.NewEncoder(w).Encode(srv.Node.SendTransaction(&tx))
+	err = json.NewEncoder(w).Encode(srv.Node.SendTransaction(tx))
 	if err != nil {
 		panic(err)
 	}
@@ -111,17 +116,17 @@ func (srv *Server) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		panic("invalid height")
 	}
-	
-	qhi,errConversion := strconv.Atoi(qh[0])
-	if errConversion!=nil {
-	
+
+	qhi, errConversion := strconv.Atoi(qh[0])
+	if errConversion != nil {
+
 		panic("invalid height")
 	}
 
 	height := uint64(qhi)
 
-	data,errGetBlock := srv.Node.GetBlock(height)
-	if errGetBlock!=nil {
+	data, errGetBlock := srv.Node.GetBlock(height)
+	if errGetBlock != nil {
 		panic(errGetBlock)
 	}
 	err := json.NewEncoder(w).Encode(data)
@@ -132,10 +137,9 @@ func (srv *Server) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprintf(w, string(res))
 }
 
-
 func (srv *Server) HandleGetGenesis(w http.ResponseWriter, r *http.Request) {
-	data,errGetBlock := srv.Node.GetBlock(0)
-	if errGetBlock!=nil {
+	data, errGetBlock := srv.Node.GetBlock(0)
+	if errGetBlock != nil {
 		panic(errGetBlock)
 	}
 	err := json.NewEncoder(w).Encode(data)

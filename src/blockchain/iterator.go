@@ -18,7 +18,7 @@ type Iterator struct {
 // Next returns next block starting from the tip
 func (i *Iterator) Next() *block.Block {
 
-	blk, err := LoadBlock(i.bc.BlockService, i.bc.BlockIndex, &i.currentHash)
+	blk, err := i.bc.LoadBlock(&i.currentHash)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -31,7 +31,7 @@ func (i *Iterator) Next() *block.Block {
 
 // LocationHash locate current hash
 func (i *Iterator) LocationHash(locateHash *hash.Hash) error {
-	_, err := LoadBlock(i.bc.BlockService, i.bc.BlockIndex, locateHash)
+	_, err := i.bc.LoadBlock(locateHash)
 	if err == nil {
 		i.currentHash = *locateHash
 	}

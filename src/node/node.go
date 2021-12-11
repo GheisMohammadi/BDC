@@ -141,6 +141,10 @@ func (node *Node) GetBlock(height uint64) (*block.Block, error) {
 	return node.blockchain.GetBlock(height)
 }
 
+func (node *Node) GetWallet() *wallet.Wallet {
+	return node.wallet
+}
+
 func (node *Node) GetNewAddress() *NewAddressResponse {
 	var res NewAddressResponse
 	addr := node.wallet.GetNewAddress()
@@ -150,7 +154,7 @@ func (node *Node) GetNewAddress() *NewAddressResponse {
 
 func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 	// Check that node has key to send tx from address
-	if node.wallet.HasKey(tx.Sender) {
+	if node.wallet.GetStringAddress()==tx.From {
 		var res SendTxResponse
 		txid := tx.GetTxid()
 		node.mempool.SetTransaction(txid, *tx)
