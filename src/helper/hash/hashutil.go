@@ -66,7 +66,7 @@ func NewHash(newHash []byte) (*Hash, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &sh, err
+	return &sh, nil
 }
 
 // Decode decodes the byte-reversed hexadecimal string encoding of a Hash to a
@@ -102,4 +102,13 @@ func Decode(dst *Hash, src string) error {
 	}
 
 	return nil
+}
+
+func FromByteArray(hashbytes []byte) (*Hash,error) {
+	var sh Hash
+	err := sh.SetBytes(hashbytes)
+	if err != nil {
+		return nil, err
+	}
+	return &sh, nil
 }

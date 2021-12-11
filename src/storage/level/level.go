@@ -28,14 +28,15 @@ func (lvldb *Storage) Init(dataPath string, configs *config.Configurations) erro
 	//initiate data path and db name
 	lvldb.DBName = configs.Storage.DBName + "_" + configs.ID
 	logger.Info("db name: ",lvldb.DBName)
-	//create/open blocks db
-	blocksDBName := lvldb.DBName + "_" + configs.Storage.Collections.Blocks
-	var errBlocksDB error
-	lvldb.BlocksDB, errBlocksDB = leveldb.OpenFile(dataPath+"/"+blocksDBName, nil)
-	if errBlocksDB != nil {
-		logger.Error(errBlocksDB)
-		return errors.StorageInitFailed
-	}
+	
+	// //create/open blocks db
+	// blocksDBName := lvldb.DBName + "_" + configs.Storage.Collections.Blocks
+	// var errBlocksDB error
+	// lvldb.BlocksDB, errBlocksDB = leveldb.OpenFile(dataPath+"/"+blocksDBName, nil)
+	// if errBlocksDB != nil {
+	// 	logger.Error(errBlocksDB)
+	// 	return errors.StorageInitFailed
+	// }
 
 	//create/open utxo db
 	utxoDBName := lvldb.DBName + "_" + configs.Storage.Collections.UTXO
@@ -91,11 +92,11 @@ func (lvldb *Storage) GetDBFileName() string {
 	return lvldb.DBName
 }
 
-// RemoveBlock remove block
-func (lvldb *Storage) RemoveBlock(blockHash []byte) error {
-	err := lvldb.BlocksDB.Delete(blockHash, nil)
-	return err
-}
+// // RemoveBlock remove block
+// func (lvldb *Storage) RemoveBlock(blockHash []byte) error {
+// 	err := lvldb.BlocksDB.Delete(blockHash, nil)
+// 	return err
+// }
 
 // SaveBlockIndex save block index to db
 func (lvldb *Storage) SaveBlockIndex(key, blockIndex []byte) error {
@@ -103,46 +104,46 @@ func (lvldb *Storage) SaveBlockIndex(key, blockIndex []byte) error {
 	return err
 }
 
-func (lvldb *Storage) SaveBlock(blockHash, blockData []byte) error {
-	err := lvldb.BlocksDB.Put(blockHash, blockData, nil)
-	if err != nil {
-		return err
-	}
-	err = lvldb.StatsDB.Put([]byte(LastHashKey), blockHash, nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func (lvldb *Storage) SaveBlock(blockHash, blockData []byte) error {
+// 	err := lvldb.BlocksDB.Put(blockHash, blockData, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = lvldb.StatsDB.Put([]byte(LastHashKey), blockHash, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-// GetBlock query block data with block hash
-// if not exists, return ErrorBlockNotFount
-func (lvldb *Storage) GetBlock(blockHash []byte) (blockData []byte, err error) {
+// // GetBlock query block data with block hash
+// // if not exists, return ErrorBlockNotFount
+// func (lvldb *Storage) GetBlock(blockHash []byte) (blockData []byte, err error) {
 
-	blockData, err = lvldb.BlocksDB.Get(blockHash, nil)
-	if blockData == nil || err != nil {
-		return nil, errors.BlockNotFount
-	}
-	return blockData, nil
+// 	blockData, err = lvldb.BlocksDB.Get(blockHash, nil)
+// 	if blockData == nil || err != nil {
+// 		return nil, errors.BlockNotFount
+// 	}
+// 	return blockData, nil
 
-}
+// }
 
-func (lvldb *Storage) GetLastBlock() (lastHash, lastBlockData []byte, err error) {
-	lastBlockHash, errLastBlock := lvldb.StatsDB.Get([]byte(LastHashKey), nil)
-	if errLastBlock != nil {
-		return nil, nil, errLastBlock
-	}
-	lastBlockFullData, errBlockData := lvldb.BlocksDB.Get(lastHash, nil)
-	if errBlockData != nil {
-		return nil, nil, errBlockData
-	}
-	return lastBlockHash, lastBlockFullData, err
-}
+// func (lvldb *Storage) GetLastBlock() (lastHash, lastBlockData []byte, err error) {
+// 	lastBlockHash, errLastBlock := lvldb.StatsDB.Get([]byte(LastHashKey), nil)
+// 	if errLastBlock != nil {
+// 		return nil, nil, errLastBlock
+// 	}
+// 	lastBlockFullData, errBlockData := lvldb.BlocksDB.Get(lastHash, nil)
+// 	if errBlockData != nil {
+// 		return nil, nil, errBlockData
+// 	}
+// 	return lastBlockHash, lastBlockFullData, err
+// }
 
-func (lvldb *Storage) GetLashBlockHash() (lastHash []byte, err error) {
-	lastHash, _, err = lvldb.GetLastBlock()
-	return
-}
+// func (lvldb *Storage) GetLashBlockHash() (lastHash []byte, err error) {
+// 	lastHash, _, err = lvldb.GetLastBlock()
+// 	return
+// }
 
 func (lvldb *Storage) GetTXMemPool() ([]byte, error) {
 	txPool, err := lvldb.TXsMemPoolDB.Get([]byte(TxMemPoolKey), nil)

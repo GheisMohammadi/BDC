@@ -11,6 +11,7 @@ Genesis:
 
 MiningSet:
   Enabled: true
+  ExpectedMiningTimeInSeconds: 15
 
 RpcSet:
   Enabled: true

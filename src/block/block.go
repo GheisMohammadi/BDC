@@ -81,6 +81,11 @@ func (b *Block) GetHash() hash.Hash {
 	return b.CalcHash()
 }
 
+func (b *Block) GetHashBytes() []byte {
+	h := b.CalcHash()
+	return h.CloneBytes()
+}
+
 func (b *Block) GetPrevHash() hash.Hash {
 	return b.Header.PrevHash
 }
