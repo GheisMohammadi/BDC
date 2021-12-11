@@ -9,9 +9,9 @@ import (
 
 func TestNewMerkleNode(t *testing.T) {
 
-	trans1 := transaction.Transaction{Sender: "sender1", Receiver: "receiver1", Amount: 100, Memo: "memo1"}
-	trans2 := transaction.Transaction{Sender: "sender2", Receiver: "receiver2", Amount: 200, Memo: "memo2"}
-	trans3 := transaction.Transaction{Sender: "sender3", Receiver: "receiver3", Amount: 300, Memo: "memo3"}
+	trans1 := transaction.Transaction{From: "sender1", To: "receiver1", Value: 100, Data: "Data1"}
+	trans2 := transaction.Transaction{From: "sender2", To: "receiver2", Value: 200, Data: "Data2"}
+	trans3 := transaction.Transaction{From: "sender3", To: "receiver3", Value: 300, Data: "Data3"}
 
 	// Level 1
 	n1 := NewMerkleNode(nil, nil, &trans1)
@@ -26,19 +26,19 @@ func TestNewMerkleNode(t *testing.T) {
 	// Level 3
 	n7 := NewMerkleNode(n5, n6, nil)
 
-	if "23d8653ced698540540c3cb321e4305fb51dcda39a0624e0bf8f4b8f61f96391" == hex.EncodeToString(n5.Data) {
+	if "488bf6d1f1e1857fd0395f165a54db5bd72242cc1003220b3aa047e8b56a4006" == hex.EncodeToString(n5.Data) {
 		t.Log(hex.EncodeToString(n5.Data))
 	} else {
 		t.Error("Level 1 hash 1 is correct", hex.EncodeToString(n5.Data))
 	}
 
-	if "42042d1daa21f80954e30d9445b3047a84c818b6b9104683c340bdfcca3e778c" == hex.EncodeToString(n6.Data) {
+	if "636dc4a10bb91a4ea1a6e90c579bb4e59448555bb21fdb81f3b012bbc312bff5" == hex.EncodeToString(n6.Data) {
 		t.Log(hex.EncodeToString(n6.Data))
 	} else {
 		t.Error("Level 1 hash 2 is correct", hex.EncodeToString(n6.Data))
 	}
 
-	if "668ec5c19a420cfc653861757fd8ad110cc6c3143948680b6e0d46a1671ed8df" == hex.EncodeToString(n7.Data) {
+	if "7c98725e5d636e7384b75f0b876ae3831894616a2ce9142fbdc815859ceee925" == hex.EncodeToString(n7.Data) {
 		t.Log(hex.EncodeToString(n7.Data))
 	} else {
 		t.Error("Root hash is correct", hex.EncodeToString(n7.Data))
@@ -47,11 +47,11 @@ func TestNewMerkleNode(t *testing.T) {
 
 func TestNewMerkleTree(t *testing.T) {
 
-	trans1 := transaction.Transaction{Sender: "sender1", Receiver: "receiver1", Amount: 100, Memo: "memo1"}
-	trans2 := transaction.Transaction{Sender: "sender2", Receiver: "receiver2", Amount: 200, Memo: "memo2"}
-	trans3 := transaction.Transaction{Sender: "sender3", Receiver: "receiver3", Amount: 300, Memo: "memo3"}
-	trans4 := transaction.Transaction{Sender: "sender4", Receiver: "receiver3", Amount: 400, Memo: "memo4"}
-	trans5 := transaction.Transaction{Sender: "sender5", Receiver: "receiver5", Amount: 500, Memo: "memo5"}
+	trans1 := transaction.Transaction{From: "sender1", To: "receiver1", Value: 100, Data: "Data1"}
+	trans2 := transaction.Transaction{From: "sender2", To: "receiver2", Value: 200, Data: "Data2"}
+	trans3 := transaction.Transaction{From: "sender3", To: "receiver3", Value: 300, Data: "Data3"}
+	trans4 := transaction.Transaction{From: "sender4", To: "receiver3", Value: 400, Data: "Data4"}
+	trans5 := transaction.Transaction{From: "sender5", To: "receiver5", Value: 500, Data: "Data5"}
 
 	txs := []*transaction.Transaction{&trans1, &trans2, &trans3, &trans4, &trans5}
 
