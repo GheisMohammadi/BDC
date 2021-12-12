@@ -28,7 +28,7 @@ func TestAccount(t *testing.T) {
 		panic(err)
 	}
 	bc := NewBlockchain(h, configs)
-	bal := new(big.Int)
+	bal := new(big.Float)
 	bal.SetInt64(1000)
 	addr := "asdfhdsjkfbmbhmfvbmxdgjhghsdjfhadgvxaydg"
 	err = bc.StoreAccount(&Account{
@@ -65,7 +65,7 @@ func TestUpdateAccounts(t *testing.T) {
 	tx3 := transaction.NewTransaction(p3,addr1,200,"3->1")   //acc3: 0       acc1: -100
 	tx4 := transaction.NewTransaction(p2,addr1,100,"2->1")   //acc2: 0       acc1: 0
 
-	txs := []transaction.Transaction{*tx1,*tx2,*tx3,*tx4}
+	txs := []*transaction.Transaction{tx1,tx2,tx3,tx4}
 
 	configs, _ := config.Init("")
 	h, err := libp2p.New(libp2p.Defaults)

@@ -19,17 +19,17 @@ func (mempool *Mempool) AddTx(tx *transaction.Transaction) {
     mempool.transactions[txid] = *tx
 }
 
-func (mempool *Mempool) RemoveTxs(txs []transaction.Transaction){
+func (mempool *Mempool) RemoveTxs(txs []*transaction.Transaction){
     for _, tx := range txs {
         txid := tx.GetTxid()
         delete(mempool.transactions, txid)
     }
 }
 
-func (mempool *Mempool) SelectTransactions() []transaction.Transaction {
-    var txs []transaction.Transaction
+func (mempool *Mempool) SelectTransactions() []*transaction.Transaction {
+    var txs []*transaction.Transaction
     for _, v := range mempool.transactions {
-        txs = append(txs, v)
+        txs = append(txs, &v)
     }
     return txs
 }

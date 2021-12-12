@@ -17,7 +17,7 @@ func (bc *Blockchain) FindTransaction(ID *hash.Hash) (*transaction.Transaction, 
 		}
 		for _, tx := range block.Transactions {
 			if tx.ID.IsEqual(ID) {
-				return &tx, nil
+				return tx, nil
 			}
 		}
 

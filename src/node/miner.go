@@ -1,17 +1,19 @@
 package node
 
 import (
-	"encoding/base64"
 	"math/rand"
 	"time"
 
 	// "math/big"
 	block "badcoin/src/block"
 	logger "badcoin/src/helper/logger"
+	merkle "badcoin/src/merkle"
+	proofofwork "badcoin/src/pow"
 )
 
 func (node *Node) StartMiner() {
 	c := make(chan *block.Block)
+	node.pow = proofofwork.NewProofOfWorkT(1)
 	go node.Mine(c)
 }
 
@@ -35,29 +37,33 @@ func FindSolsTimeout(c chan string) {
 	}
 }
 
-func isWinner(ticket string) bool {
-	// num := big.NewInt(0).SetBytes(ticket)
-	winner := "000"
-	res := false
-	if ticket[:len(winner)] == winner {
-		return true
-	}
-	return res
-}
-
 func (node *Node) FindSolsHash(c chan *block.Block) {
+
 	blk := node.CreateNewBlock()
-	blk.Header.Nonce = make([]byte, 32)
+	logger.Info("Mining started!")
+	//blk.Header.Nonce = make([]byte, 32)
+
 	for {
-		rand.Read(blk.Header.Nonce)
-		guess := blk.CalcHash()
-		ticket := base64.StdEncoding.EncodeToString(guess[:])
-		if isWinner(ticket) {
-			blk.Header.Solution = ticket
-			// logger.Info("Ticket:", ticket)
+		mtree := merkle.BuildTxMerkleTree(blk.Transactions)
+		rootHash := mtree.RootNode.Data
+		//fmt.Println(rootHash)
+		difficulty := node.blockchain.AdjustDifficulty(blk)
+		node.pow.SetTarget(int(difficulty))
+
+		solved := node.pow.SolveHash(blk.Header.PrevHash[:], rootHash, nil)
+		if solved == true {
+			//blk.Header.Solution = node.pow.Hash.String()
+			blk.Header.Nonce = node.pow.Nonce
+			now := time.Now()
+			blk.Header.Timestamp = now.UnixMicro()
+			blk.UpdateHash()
 			c <- blk
-			blk = node.CreateNewBlock()
-			blk.Header.Nonce = make([]byte, 32)
+			blkstr := string(blk.Serialize())
+			logger.Info("Block #", blk.Height, ": ", blkstr)
+			//blk.Header.Nonce = make([]byte, 32)
 		}
+		time.Sleep(time.Duration(10) * time.Second)
+		blk = node.CreateNewBlock()
 	}
+
 }

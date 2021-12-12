@@ -1,6 +1,7 @@
 package pow
 
 import (
+	hash "badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	"badcoin/src/helper/number"
 	"bytes"
@@ -21,7 +22,7 @@ const TargetBits = 16
 type ProofOfWork struct {
 	Target   *big.Int
 	Nonce    int64
-	Hash     [32]byte
+	Hash     hash.Hash
 	Duration int64
 }
 
@@ -39,6 +40,14 @@ func NewProofOfWork() *ProofOfWork {
 	target.Lsh(target, uint(256-TargetBits))
 	pow := &ProofOfWork{Target: target}
 	return pow
+}
+
+// NewProofOfWork builds and returns a ProofOfWork
+func (pow *ProofOfWork) SetTarget(targetBits int) error {
+	target := big.NewInt(1)
+	target.Lsh(target, uint(256-TargetBits))
+	pow.Target.Set(target)
+	return nil
 }
 
 // calculateHash calc hash with bestBlockHash and Txs hashes
@@ -79,7 +88,7 @@ func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struc
 				t2 := time.Now().UnixMicro()
 				pow.Duration = t2 - t1
 				pow.Nonce = int64(nonce)
-				pow.Hash = hash
+				pow.Hash.SetBytes(hash[:])
 				logger.Trace("Mining SolveHash Success", nonce, hex.EncodeToString(hash[:]))
 				return true
 			} else {

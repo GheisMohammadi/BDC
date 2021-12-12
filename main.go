@@ -40,6 +40,10 @@ func main() {
 	ctx := context.Background()
 	node := node.CreateNewNode(ctx,Configs)
 
+	if Configs.MiningSet.Enabled == true {
+		logger.Info("start mining...")
+		node.StartMiner()
+	}
 	//Start server
 	srv := server.CreateNewServer(ctx,node,"3000")
 	srv.ListenAndServe()

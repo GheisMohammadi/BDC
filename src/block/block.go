@@ -4,6 +4,7 @@ import (
 	"badcoin/src/transaction"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	hash "badcoin/src/helper/hash"
@@ -13,18 +14,19 @@ type BlockHeader struct {
 	Version    uint64
 	PrevHash   hash.Hash
 	MerkleRoot hash.Hash
-	Timestamp  uint64
-	Nonce      []byte
+	Timestamp  int64
+	Nonce      int64
+	Miner      string
 	Difficulty uint32
-	Solution   string
 }
 
 type Block struct {
 	Height       uint64
 	Hash         hash.Hash
 	Header       BlockHeader
+	Reward       *big.Float
 	TxsCount     uint64
-	Transactions []transaction.Transaction
+	Transactions []*transaction.Transaction
 }
 
 func (b *Block) String() string {
@@ -38,6 +40,7 @@ func (b *Block) String() string {
 	lines = append(lines, fmt.Sprintf("    Timestamp:       %d", b.Header.Timestamp))
 	lines = append(lines, fmt.Sprintf("    Difficulty:      %d", b.Header.Difficulty))
 	lines = append(lines, fmt.Sprintf("    Nonce:           %d", b.Header.Nonce))
+	lines = append(lines, fmt.Sprintf("    Miner:           %s", b.Header.Miner))
 	lines = append(lines, fmt.Sprintf("    Height:          %d", b.Height))
 
 	lines = append(lines, fmt.Sprintf("    Transactions     %d:", len(b.Transactions)))

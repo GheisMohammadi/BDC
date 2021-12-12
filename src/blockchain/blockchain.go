@@ -2,6 +2,8 @@ package blockchain
 
 import (
 	"context"
+	"math"
+	"math/big"
 	"path/filepath"
 	"time"
 
@@ -141,7 +143,7 @@ func (chain *Blockchain) LoadBlock(h *hash.Hash) (*block.Block, error) {
 
 //PutBlock stores and broadcast block using block service and store it's index in block index db
 func (chain *Blockchain) PutBlock(blk *block.Block) (*cid.Cid, error) {
-	bs  := chain.BlockService
+	bs := chain.BlockService
 
 	nd, err := cbor.WrapObject(blk, multihash.BLAKE2B_MIN+31, 32)
 	if err != nil {
@@ -178,7 +180,7 @@ func (chain *Blockchain) SaveBlockIndex(blk *block.Block) error {
 	}
 
 	errUpdateAccounts := chain.UpdateAccounts(blk.Transactions)
-	if errUpdateAccounts!=nil {
+	if errUpdateAccounts != nil {
 		return errUpdateAccounts
 	}
 
@@ -191,7 +193,7 @@ func (chain *Blockchain) SaveBlockIndex(blk *block.Block) error {
 
 func CreateGenesisBlock(nonce int64) *block.Block {
 	//convert nonce to byte array
-	noncebytes := number.IntToHex(nonce)
+	//noncebytes := number.IntToHex(nonce)
 	now := time.Now()
 	tm := now.UnixMilli()
 
@@ -202,12 +204,13 @@ func CreateGenesisBlock(nonce int64) *block.Block {
 			Version:    10000,
 			PrevHash:   *hash.ZeroHash(),
 			MerkleRoot: *hash.ZeroHash(),
-			Timestamp:  uint64(tm),
-			Nonce:      noncebytes,
+			Timestamp:  tm,
+			Nonce:      nonce,
+			Miner:      "0x0",
 			Difficulty: 1,
-			Solution:   "",
 		},
 		TxsCount:     0,
+		Reward:       new(big.Float).SetInt64(0),
 		Transactions: nil,
 	}
 	genesisBlock.UpdateHash()
@@ -237,7 +240,7 @@ func (chain *Blockchain) GetBlock(height uint64) (*block.Block, error) {
 	return chain.LoadBlock(blockhash)
 }
 
-func validateTransactions(txs []transaction.Transaction) bool {
+func validateTransactions(txs []*transaction.Transaction) bool {
 	// TODO:Validate tx format and logic
 	return true
 }
@@ -298,7 +301,7 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 		}
 		blkCopy := *blk
 		chain.Head = &blkCopy
-		logger.Info("Block accepted, chain head set to block:", string(blkCopy.Serialize()))
+		logger.Info("Block accepted, chain head set to block:", blkCopy.Hash) //string(blkCopy.Serialize()))
 		cid, err := chain.PutBlock(&blkCopy)
 		if err != nil {
 			return nil
@@ -370,4 +373,21 @@ func (bc *Blockchain) GetBlockHashes(beginHash *hash.Hash, stopHash hash.Hash, m
 	}
 
 	return blocks, nil
+}
+
+func (bc *Blockchain) AdjustDifficulty(blk *block.Block) int64 {
+	blk.Header.Difficulty = 1
+	return 1
+}
+
+func (bc *Blockchain) CalcReward(height uint64) *big.Float {
+
+	reward := new(big.Float)
+
+	hcat := int64(height/100)
+	halvingreward := 100*math.Pow(0.5,float64(hcat))
+	
+	reward.SetFloat64(halvingreward)
+
+	return reward
 }

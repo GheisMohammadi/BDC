@@ -58,6 +58,15 @@ func BuildTxMerkleTree(txs []*transaction.Transaction) *TxMerkleTree {
 		nodes = newLevel
 	}
 
+	if len(nodes) == 0 {
+		zeronode := MerkleNode{
+			Left:  nil,
+			Right: nil,
+			Data:  hash.ZeroHash().CloneBytes(),
+		}
+		//NewMerkleNode(nil,nil,transaction.NewTransaction([]byte{},"",0,""))
+		nodes = append(nodes, zeronode)
+	}
 	mTree := TxMerkleTree{&nodes[0]}
 
 	return &mTree

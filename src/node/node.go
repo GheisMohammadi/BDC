@@ -15,6 +15,8 @@ import (
 
 	config "badcoin/src/config"
 
+	proofofwork "badcoin/src/pow"
+
 	ipfsaddr "github.com/ipfs/go-ipfs-addr"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -28,6 +30,7 @@ type Node struct {
 	blockchain *blockchain.Blockchain
 	pubsub     *floodsub.PubSub
 	wallet     *wallet.Wallet
+	pow        *proofofwork.ProofOfWork
 }
 
 func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
@@ -128,7 +131,8 @@ func (node *Node) CreateNewBlock() *block.Block {
 	blk.Header.PrevHash = node.blockchain.Head.GetHash()
 	blk.Transactions = node.mempool.SelectTransactions()
 	blk.Height = node.blockchain.Head.Height + 1
-	blk.Header.Timestamp = uint64(time.Now().Unix())
+	blk.Header.Timestamp = time.Now().Unix()
+	blk.Reward = node.blockchain.CalcReward(blk.Height)
 	return &blk
 }
 
@@ -154,7 +158,7 @@ func (node *Node) GetNewAddress() *NewAddressResponse {
 
 func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 	// Check that node has key to send tx from address
-	if node.wallet.GetStringAddress()==tx.From {
+	if node.wallet.GetStringAddress() == tx.From {
 		var res SendTxResponse
 		txid := tx.GetTxid()
 		node.mempool.SetTransaction(txid, *tx)

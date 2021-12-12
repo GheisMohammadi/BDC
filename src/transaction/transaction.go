@@ -22,7 +22,7 @@ type Transaction struct {
 	From      string
 	To        string
 	Fee       uint64
-	Value     uint64
+	Value     float64
 	Data      string
 }
 
@@ -61,7 +61,7 @@ func DeserializeTx(buf []byte) (*Transaction, error) {
 	return &tx, nil
 }
 
-func NewTransaction(pubKey []byte, to string, value uint64, data string) *Transaction {
+func NewTransaction(pubKey []byte, to string, value float64, data string) *Transaction {
 
 	fromBytes := address.FromPublicKey(pubKey)
 	from := address.ToString(fromBytes)

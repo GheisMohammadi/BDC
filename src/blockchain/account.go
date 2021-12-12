@@ -10,7 +10,7 @@ import (
 type Account struct {
 	Nonce   uint64
 	Address string
-	Balance big.Int
+	Balance big.Float
 }
 
 func (acc *Account) Serialize() []byte {
@@ -36,16 +36,16 @@ func (chain *Blockchain) StoreAccount(acc *Account) error {
 }
 
 func (chain *Blockchain) AddToAccountBalance(address string, value int64) error {
-	bal := new(big.Int)
+	bal := new(big.Float)
 	bal.SetInt64(0)
 	if accbytes, err := chain.Accounts.Get([]byte(address), nil); err != nil {
 		return err
 	} else {
 		acc, _ := DeserializeAccount(accbytes)
-		val := new(big.Int)
+		val := new(big.Float)
 		val.SetInt64(value)
-		res := new(big.Int).Add(&acc.Balance, val)
-		if res.Cmp(big.NewInt(0)) == -1 {
+		res := new(big.Float).Add(&acc.Balance, val)
+		if res.Cmp(big.NewFloat(0)) == -1 {
 			return errors.NotEnoughAccountBalance
 		}
 		acc.Balance.Set(res)
@@ -58,8 +58,8 @@ func (chain *Blockchain) AddToAccountBalance(address string, value int64) error 
 	return nil
 }
 
-func (chain *Blockchain) GetAccountBalance(address string) (*big.Int, error) {
-	bal := new(big.Int)
+func (chain *Blockchain) GetAccountBalance(address string) (*big.Float, error) {
+	bal := new(big.Float)
 	bal.SetInt64(0)
 	if accbytes, err := chain.Accounts.Get([]byte(address), nil); err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (chain *Blockchain) GetAccountBalance(address string) (*big.Int, error) {
 }
 
 func (chain *Blockchain) FetchAccountDetails(address string) (*Account, error) {
-	bal := new(big.Int)
+	bal := new(big.Float)
 	bal.SetInt64(0)
 	if accbytes, err := chain.Accounts.Get([]byte(address), nil); err != nil {
 		return nil, err
@@ -81,24 +81,24 @@ func (chain *Blockchain) FetchAccountDetails(address string) (*Account, error) {
 	}
 }
 
-func (chain *Blockchain) UpdateAccounts(txs []transaction.Transaction) error {
-	values := make(map[string]*big.Int)
+func (chain *Blockchain) UpdateAccounts(txs []*transaction.Transaction) error {
+	values := make(map[string]*big.Float)
 	for _, tx := range txs {
-		val := big.NewInt(int64(tx.Value))
+		val := big.NewFloat(float64(tx.Value))
 		if values[tx.From] == nil {
-			values[tx.From] = big.NewInt(0)
+			values[tx.From] = big.NewFloat(0)
 		}
 		if values[tx.To] == nil {
-			values[tx.To] = big.NewInt(0)
+			values[tx.To] = big.NewFloat(0)
 		}
 		vf := values[tx.From]
 		vt := values[tx.To]
-		values[tx.To] = new(big.Int).Add(vt, val)
-		values[tx.From] = new(big.Int).Add(vf, new(big.Int).Neg(val))
+		values[tx.To] = new(big.Float).Add(vt, val)
+		values[tx.From] = new(big.Float).Add(vf, new(big.Float).Neg(val))
 	}
 
 	for _, val := range values {
-		if val.Cmp(big.NewInt(0)) == -1 {
+		if val.Cmp(big.NewFloat(0)) == -1 {
 			return errors.NotEnoughAccountBalance
 		}
 	}

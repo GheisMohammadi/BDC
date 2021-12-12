@@ -89,7 +89,7 @@ func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 		panic(errors.New("no access to this wallet address"))
 	}
 	//srv.Node.SendTransaction()
-	tx := transaction.NewTransaction(wallet.PublicKey, to, uint64(value), data)
+	tx := transaction.NewTransaction(wallet.PublicKey, to, float64(value), data)
 	tx.UpdateHash()
 	tx.Sign(wallet.PrivateKey)
 
