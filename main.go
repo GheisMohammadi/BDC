@@ -20,7 +20,8 @@ func main() {
 
 	//init configs
 	logger.Info("loading configurations...")
-	Configs, errConfig := config.Init("config")
+	configFilePath, _ := filepath.Abs("./config/")
+	Configs, errConfig := config.Init(configFilePath)
 	if errConfig != nil {
 		panic("load configuration failed")
 	}

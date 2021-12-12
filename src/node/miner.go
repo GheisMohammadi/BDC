@@ -1,11 +1,11 @@
 package node
 
 import (
-	"math/rand"
 	"time"
 
 	// "math/big"
 	block "badcoin/src/block"
+	hash "badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	merkle "badcoin/src/merkle"
 	proofofwork "badcoin/src/pow"
@@ -27,35 +27,33 @@ func (node *Node) Mine(c chan *block.Block) {
 	}
 }
 
-func FindSolsTimeout(c chan string) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for {
-		rand := r.Intn(10) // Adjusts variance of block speed
-		logger.Info("Interval:", rand)
-		time.Sleep(time.Duration(rand) * time.Second)
-		c <- "Found a block solution"
-	}
-}
-
 func (node *Node) FindSolsHash(c chan *block.Block) {
 
 	blk := node.CreateNewBlock()
+	if blk == nil {
+		logger.Error("Can't create new block")
+		return
+	}
 	logger.Info("Mining started!")
 	//blk.Header.Nonce = make([]byte, 32)
 
 	for {
 		mtree := merkle.BuildTxMerkleTree(blk.Transactions)
-		rootHash := mtree.RootNode.Data
+		rootData := mtree.RootNode.Data
+		rootHash, _ := hash.FromByteArray(rootData)
+		blk.Header.MerkleRoot = *rootHash
 		//fmt.Println(rootHash)
 		difficulty := node.blockchain.AdjustDifficulty(blk)
 		node.pow.SetTarget(int(difficulty))
 
-		solved := node.pow.SolveHash(blk.Header.PrevHash[:], rootHash, nil)
+		extradata := []byte(blk.Header.Miner)
+		solved := node.pow.SolveHash(blk.Header.PrevHash[:], rootHash.CloneBytes(), extradata, nil)
 		if solved == true {
 			//blk.Header.Solution = node.pow.Hash.String()
 			blk.Header.Nonce = node.pow.Nonce
 			now := time.Now()
 			blk.Header.Timestamp = now.UnixMicro()
+			blk.Header.Miner = node.wallet.GetStringAddress()
 			blk.UpdateHash()
 			c <- blk
 			blkstr := string(blk.Serialize())
@@ -64,6 +62,10 @@ func (node *Node) FindSolsHash(c chan *block.Block) {
 		}
 		time.Sleep(time.Duration(10) * time.Second)
 		blk = node.CreateNewBlock()
+		if blk == nil {
+			logger.Error("Can't create new block, Mining will be stopped")
+			return
+		}
 	}
 
 }

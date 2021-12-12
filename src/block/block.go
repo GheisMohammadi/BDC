@@ -1,23 +1,35 @@
 package block
 
 import (
+	hash "badcoin/src/helper/hash"
 	"badcoin/src/transaction"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
-
-	hash "badcoin/src/helper/hash"
 )
 
+type BlockMessage struct {
+	Height  uint64 `json:"height"`
+	Message string `json:"message"`
+}
+
+type BlockMessages struct {
+	Messages []BlockMessage `json:"Messages"`
+}
+
 type BlockHeader struct {
-	Version    uint64
+	Version    string
 	PrevHash   hash.Hash
 	MerkleRoot hash.Hash
 	Timestamp  int64
 	Nonce      int64
 	Miner      string
 	Difficulty uint32
+	Memo       string
 }
 
 type Block struct {
@@ -106,4 +118,38 @@ func (b *Block) SetHash(h hash.Hash) {
 // SetHash sets the hash of the block
 func (b *Block) UpdateHash() {
 	b.Hash = b.CalcHash()
+}
+
+func ReadBlockMessage(height uint64) (string, error) {
+
+	messagefile, _ := filepath.Abs("config/block_message.json")
+	//logger.Info(messagefile)
+	jsonFile, err := os.Open(messagefile)
+	if err != nil {
+		return "", err
+	}
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	// we initialize our Users array
+	var memos BlockMessages
+
+	// we unmarshal our byteArray which contains our
+	// jsonFile's content into 'users' which we defined above
+	err = json.Unmarshal(byteValue, &memos)
+	if err != nil {
+		return "", err
+	}
+	
+	// we iterate through every user within our users array and
+	// print out the user Type, their name, and their facebook url
+	// as just an example
+	for i := 0; i < len(memos.Messages); i++ {
+		// fmt.Println("Height: ", memos.Messages[i].Height)
+		// fmt.Println("Message: ", memos.Messages[i].Message)
+		if memos.Messages[i].Height == height {
+			return memos.Messages[i].Message, nil
+		}
+	}
+
+	return "", nil
 }

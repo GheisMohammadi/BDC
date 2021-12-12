@@ -8,7 +8,8 @@ Genesis:
   Height: 0
   Nonce:  1337
   Reward: 100
-
+  Message: "it's inevitable"
+  
 MiningSet:
   Enabled: true
   ExpectedMiningTimeInSeconds: 15

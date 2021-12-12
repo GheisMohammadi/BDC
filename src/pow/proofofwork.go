@@ -51,22 +51,23 @@ func (pow *ProofOfWork) SetTarget(targetBits int) error {
 }
 
 // calculateHash calc hash with bestBlockHash and Txs hashes
-func (pow *ProofOfWork) calculateHash(prevBlockHash, TXsHash []byte, nonce int) [32]byte {
-	data := bytes.Join(
+func (pow *ProofOfWork) calculateHash(prevBlockHash, TXsHash []byte, data []byte, nonce int) [32]byte {
+	datatohash := bytes.Join(
 		[][]byte{
 			prevBlockHash,
 			TXsHash,
+			data,
 			number.IntToHex(int64(TargetBits)),
 			number.IntToHex(int64(nonce)),
 		},
 		[]byte{},
 	)
-	return sha256.Sum256(data)
+	return sha256.Sum256(datatohash)
 }
 
 // solveHash solve right hash which less than the target difficulty
 // it will be stop when received quit signal
-func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struct{}) bool {
+func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, data []byte, quit chan struct{}) bool {
 	var hashInt big.Int
 	var hash [32]byte
 	nonce := 0
@@ -77,7 +78,7 @@ func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struc
 			logger.Trace("Mining SolveHash Failed, because receive quit signal")
 			return false
 		default:
-			hash = pow.calculateHash(prevBlockHash, TXsHash, nonce)
+			hash = pow.calculateHash(prevBlockHash, TXsHash, data, nonce)
 
 			// if math.Remainder(float64(nonce), 10000) == 0 {
 			// 	//fmt.Printf("\r%x", hash)
@@ -100,27 +101,27 @@ func (pow *ProofOfWork) solveHash(prevBlockHash, TXsHash []byte, quit chan struc
 	return false
 }
 
-func (pow *ProofOfWork) RunAtOnce(prevBlockHash, TXsHash []byte) (int, []byte) {
+func (pow *ProofOfWork) RunAtOnce(prevBlockHash, TXsHash []byte, data []byte) (int, []byte) {
 	var hashInt big.Int
 	var hash [32]byte
 	nonce := 0
 	//immediately return for test
-	hash = pow.calculateHash(prevBlockHash, TXsHash, nonce)
+	hash = pow.calculateHash(prevBlockHash, TXsHash, data, nonce)
 	hashInt.SetBytes(hash[:])
 	return nonce, hash[:]
 }
 
 // SolveHash loop calc hash to solve target
-func (pow *ProofOfWork) SolveHash(prevBlockHash, TXsHash []byte, quit chan struct{}) bool {
-	isSolve := pow.solveHash(prevBlockHash, TXsHash, quit)
+func (pow *ProofOfWork) SolveHash(prevBlockHash, TXsHash []byte, data []byte, quit chan struct{}) bool {
+	isSolve := pow.solveHash(prevBlockHash, TXsHash, data, quit)
 	return isSolve
 }
 
 // Validate validates block's PoW
-func (pow *ProofOfWork) Validate(prevBlockHash, TXsHash []byte, nonce int) bool {
+func (pow *ProofOfWork) Validate(prevBlockHash, TXsHash []byte, data []byte, nonce int) bool {
 	var hashInt big.Int
 
-	hash := pow.calculateHash(prevBlockHash, TXsHash, nonce)
+	hash := pow.calculateHash(prevBlockHash, TXsHash, data, nonce)
 	hashInt.SetBytes(hash[:])
 
 	isValid := hashInt.Cmp(pow.Target) == -1

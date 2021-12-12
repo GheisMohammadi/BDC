@@ -38,6 +38,7 @@ type Blockchain struct {
 	Blockstore   blockstore.Blockstore     //block store to fetch data locally
 	BlockIndex   *leveldb.DB
 	Accounts     *leveldb.DB
+	Configs      *config.Configurations
 }
 
 func Init() {
@@ -94,7 +95,7 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 	// 'blockservice'
 	chainblockserviceice := blockservice.New(chainblockstore, bswap)
 
-	genesis := CreateGenesisBlock(configs.Genesis.Nonce)
+	genesis := CreateGenesisBlock(configs.Genesis.Nonce, configs.Genesis.Message)
 
 	chain := &Blockchain{
 		GenesisBlock: genesis,
@@ -103,6 +104,7 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 		Blockstore:   chainblockstore,
 		BlockIndex:   blockindex,
 		Accounts:     accDB,
+		Configs:      configs,
 	}
 
 	// make sure the genesis block is in our local blockstore
@@ -191,7 +193,7 @@ func (chain *Blockchain) SaveBlockIndex(blk *block.Block) error {
 	return nil
 }
 
-func CreateGenesisBlock(nonce int64) *block.Block {
+func CreateGenesisBlock(nonce int64, message string) *block.Block {
 	//convert nonce to byte array
 	//noncebytes := number.IntToHex(nonce)
 	now := time.Now()
@@ -201,13 +203,14 @@ func CreateGenesisBlock(nonce int64) *block.Block {
 		Height: 0,
 		//Hash:	*hash.ZeroHash(),
 		Header: block.BlockHeader{
-			Version:    10000,
+			Version:    "0.0.1",
 			PrevHash:   *hash.ZeroHash(),
 			MerkleRoot: *hash.ZeroHash(),
 			Timestamp:  tm,
 			Nonce:      nonce,
 			Miner:      "0x0",
 			Difficulty: 1,
+			Memo:       message,
 		},
 		TxsCount:     0,
 		Reward:       new(big.Float).SetInt64(0),
@@ -227,14 +230,21 @@ func (chain *Blockchain) GetBlock(height uint64) (*block.Block, error) {
 		return chain.GenesisBlock, nil
 	}
 	if height < 0 || height > chain.Head.Height {
+		logger.Error("height (which is ", height, ") should be between 0 and ", chain.Head.Height, ".")
 		return nil, errors.InvalidHeight
 	}
 	blockhashbytes, err := chain.BlockIndex.Get(number.Int64ToByteArray(int64(height)), nil) //chain.BlockIndex[height]
 	if err != nil {
+		if err == leveldb.ErrNotFound {
+			logger.Error("block height ", height, " not found")
+			return nil, nil
+		}
+		logger.Error("block height ", height, " fetch failed")
 		return nil, err
 	}
 	blockhash, _ := hash.FromByteArray(blockhashbytes)
 	if blockhash.String() == hash.ZeroHash().String() {
+		logger.Error("block height ", height, " has zero hash")
 		return nil, errors.InvalidHeight
 	}
 	return chain.LoadBlock(blockhash)
@@ -384,9 +394,9 @@ func (bc *Blockchain) CalcReward(height uint64) *big.Float {
 
 	reward := new(big.Float)
 
-	hcat := int64(height/100)
-	halvingreward := 100*math.Pow(0.5,float64(hcat))
-	
+	hcat := int64(height / 100)
+	halvingreward := 100 * math.Pow(0.5, float64(hcat))
+
 	reward.SetFloat64(halvingreward)
 
 	return reward

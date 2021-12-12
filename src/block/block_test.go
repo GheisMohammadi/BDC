@@ -20,3 +20,11 @@ func TestHashBlock(t *testing.T) {
 		t.Fatal("Hashing block failed.")
 	}
 }
+
+func TestMessage(t *testing.T) {
+	msg,err := ReadBlockMessage(13)
+	if err!=nil {
+		t.Error(err)
+	}
+	fmt.Println("found msg: ",msg)
+}

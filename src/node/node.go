@@ -47,7 +47,7 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 	}
 
 	for i, addr := range newNode.Addrs() {
-		logger.Info(i, ": ", addr, "/ipfs/", newNode.ID().Pretty())
+		logger.Info(i, ": ", addr.String() + "/ipfs/" + newNode.ID().Pretty())
 	}
 
 	if len(os.Args) > 1 {
@@ -128,11 +128,23 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 
 func (node *Node) CreateNewBlock() *block.Block {
 	var blk block.Block
+	height := node.blockchain.Head.Height + 1
+	blkmsg, errmsg := block.ReadBlockMessage(height)
+	if errmsg != nil {
+		logger.Error(errmsg)
+		return nil
+	}
+	//header
 	blk.Header.PrevHash = node.blockchain.Head.GetHash()
-	blk.Transactions = node.mempool.SelectTransactions()
-	blk.Height = node.blockchain.Head.Height + 1
+	blk.Header.Version = "0.0.1"
 	blk.Header.Timestamp = time.Now().Unix()
+	blk.Header.Difficulty = node.blockchain.Head.Header.Difficulty
+	blk.Header.Memo = blkmsg
+	//body
+	blk.Height = height
 	blk.Reward = node.blockchain.CalcReward(blk.Height)
+	blk.Transactions = node.mempool.SelectTransactions()
+	blk.TxsCount = uint64(len(blk.Transactions))
 	return &blk
 }
 

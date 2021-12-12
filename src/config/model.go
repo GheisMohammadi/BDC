@@ -19,9 +19,10 @@ type Configurations struct {
 
 //Genesis for genesis block options
 type Genesis struct {
-	Height uint64
-	Nonce  int64
-	Reward uint64
+	Height  uint64
+	Nonce   int64
+	Reward  uint64
+	Message string
 }
 
 // MiningSet mining config
