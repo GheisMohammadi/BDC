@@ -10,16 +10,15 @@ import (
 	config "badcoin/src/config"
 	number "badcoin/src/helper/number"
 
-	bitswap "github.com/ipfs/go-bitswap"
-	network "github.com/ipfs/go-bitswap/network"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	//graphnet "github.com/ipfs/go-graphsync/network"
 	blockservice "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
-	dsleveldb "github.com/ipfs/go-ds-leveldb"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	nonerouting "github.com/ipfs/go-ipfs-routing/none"
+
+	//nonerouting "github.com/ipfs/go-ipfs-routing/none"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	multihash "github.com/multiformats/go-multihash"
-
 	leveldb "github.com/syndtr/goleveldb/leveldb"
 
 	block "badcoin/src/block"
@@ -44,24 +43,30 @@ type Blockchain struct {
 func Init() {
 	// We need to Register our types with the cbor.
 	// So, it pregenerates serializers for these types.
+	cbor.RegisterCborType(big.Float{})
+	cbor.RegisterCborType(block.BlockHeader{})
 	cbor.RegisterCborType(block.Block{})
 	cbor.RegisterCborType(transaction.Transaction{})
 }
 
-func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
-	// base backing datastore, currently just in memory, but can be swapped out
-	// easily for leveldb or other
-	path := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_bs"
-	fullpath, _ := filepath.Abs(path)
-	//dstore := datastore.NewMapDatastore()
-	dstore, err := dsleveldb.NewDatastore(fullpath, nil)
-	if err != nil {
-		panic(err)
-	}
+func LoadBlockchain() {
+	// keychan,_ := chainblockstore.AllKeysChan(context.Background())
+	// for {
+	// 	select {
+	// 	case k := <-keychan:
+	// 		if k.ByteLen()==0 {
+	// 			break
+	// 		} else {
+	// 			logger.Info("KEYS: ",k.String())
+				
+	// 		}
+	// 	default:
+	// 		break
+	// 	}
+	// }
+}
 
-	// wrap the datastore in a 'content addressed blocks' layer
-	chainblockstore := blockstore.NewBlockstore(dstore)
-
+func NewBlockchain(h host.Host, chainblockstore blockstore.Blockstore, bswap exchange.Interface, configs *config.Configurations) *Blockchain {
 	//create block index db
 	blockindexDBPath := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_bi"
 	var errIndexDB error
@@ -80,20 +85,10 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 		panic(errAccDB)
 	}
 
-	// now heres where it gets a bit weird. Its currently rather annoying to set up a bitswap instance.
-	// Bitswap wants a datastore, and a 'network'. Bitswaps network instance
-	// wants a libp2p node and a 'content routing' instance. We don't care
-	// about content routing right now, so we want to give it a dummy one.
-	// TODO: make bitswap easier to construct
-	nr, _ := nonerouting.ConstructNilRouting(nil, nil, nil, nil)
-	bsnet := network.NewFromIpfsHost(h, nr)
-
-	bswap := bitswap.New(context.Background(), bsnet, chainblockstore)
-
 	// Bitswap only fetches blocks from other nodes, to fetch blocks from
 	// either the local cache, or a remote node, we can wrap it in a
 	// 'blockservice'
-	chainblockserviceice := blockservice.New(chainblockstore, bswap)
+	chainblockserviceice := blockservice.NewWriteThrough(chainblockstore, bswap)
 
 	genesis := CreateGenesisBlock(configs.Genesis.Nonce, configs.Genesis.Message)
 
@@ -110,20 +105,36 @@ func NewBlockchain(h host.Host, configs *config.Configurations) *Blockchain {
 	// make sure the genesis block is in our local blockstore
 	chain.PutBlock(genesis)
 
+	isonline := bswap.IsOnline()
+	logger.Info("exchange online is ", isonline)
 	return chain
 }
 
 //LoadBlock loads block from local db or other nodes using block service
-func (chain *Blockchain) LoadBlock(h *hash.Hash) (*block.Block, error) {
+func (chain *Blockchain) LoadBlock(blkcid *cid.Cid) (*block.Block, error) {
 
-	bs := chain.BlockService
+	if blkcid==nil {
+		return nil,nil
+	}
+
+	bsrv := chain.BlockService
 	bi := chain.BlockIndex
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithCancel(context.Background()) //, time.Second*10)
 	defer cancel()
 
-	blkcid, _ := h.ToCid()
-	data, err := bs.GetBlock(ctx, *blkcid)
+	ok, _ := bsrv.Blockstore().Has(ctx, *blkcid)
+	if ok == false {
+		logger.Error("Block is not exist in block store, trying to fetch from exchange...")
+		isonline := bsrv.Exchange().IsOnline()
+		if isonline == false {
+			logger.Error("Exchange is not online to retrieve block")
+			return nil, errors.ExchangeISNotOnline
+		}
+	}
+	//sess := blockservice.NewSession(ctx, bsrv)
+
+	data, err := bsrv.GetBlock(ctx, *blkcid)
 	if err != nil {
 		return nil, err
 	}
@@ -145,14 +156,19 @@ func (chain *Blockchain) LoadBlock(h *hash.Hash) (*block.Block, error) {
 
 //PutBlock stores and broadcast block using block service and store it's index in block index db
 func (chain *Blockchain) PutBlock(blk *block.Block) (*cid.Cid, error) {
-	bs := chain.BlockService
+	bsrv := chain.BlockService
 
 	nd, err := cbor.WrapObject(blk, multihash.BLAKE2B_MIN+31, 32)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := bs.AddBlock(context.Background(), nd); err != nil {
+	if err := bsrv.AddBlock(context.Background(), nd); err != nil {
+		return nil, err
+	}
+
+	err = bsrv.Exchange().HasBlock(context.Background(), nd)
+	if err != nil {
 		return nil, err
 	}
 
@@ -165,10 +181,11 @@ func (chain *Blockchain) PutBlock(blk *block.Block) (*cid.Cid, error) {
 	return &cid, nil
 }
 
+// Height ---- Map to ----> Block Cid
 func (chain *Blockchain) SaveBlockIndex(blk *block.Block) error {
 
 	heightbytes := number.Int64ToByteArray(int64(blk.Height))
-	hashbytes := blk.GetHashBytes()
+	hashbytes := chain.GetBlockCid(blk).Bytes() //blk.GetHashBytes()
 
 	blkbytes, errGet := chain.BlockIndex.Get(hashbytes, nil)
 	if errGet == nil {
@@ -212,6 +229,7 @@ func CreateGenesisBlock(nonce int64, message string) *block.Block {
 			Difficulty: 1,
 			Memo:       message,
 		},
+		PrevCid:      nil,
 		TxsCount:     0,
 		Reward:       new(big.Float).SetInt64(0),
 		Transactions: nil,
@@ -233,7 +251,7 @@ func (chain *Blockchain) GetBlock(height uint64) (*block.Block, error) {
 		logger.Error("height (which is ", height, ") should be between 0 and ", chain.Head.Height, ".")
 		return nil, errors.InvalidHeight
 	}
-	blockhashbytes, err := chain.BlockIndex.Get(number.Int64ToByteArray(int64(height)), nil) //chain.BlockIndex[height]
+	blkCidbytes, err := chain.BlockIndex.Get(number.Int64ToByteArray(int64(height)), nil) //chain.BlockIndex[height]
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			logger.Error("block height ", height, " not found")
@@ -242,12 +260,13 @@ func (chain *Blockchain) GetBlock(height uint64) (*block.Block, error) {
 		logger.Error("block height ", height, " fetch failed")
 		return nil, err
 	}
-	blockhash, _ := hash.FromByteArray(blockhashbytes)
-	if blockhash.String() == hash.ZeroHash().String() {
-		logger.Error("block height ", height, " has zero hash")
-		return nil, errors.InvalidHeight
-	}
-	return chain.LoadBlock(blockhash)
+	// blockhash, _ := hash.FromByteArray(blockhashbytes)
+	// if blockhash.String() == hash.ZeroHash().String() {
+	// 	logger.Error("block height ", height, " has zero hash")
+	// 	return nil, errors.InvalidHeight
+	// }
+	_, blkcid, _ := cid.CidFromBytes(blkCidbytes)
+	return chain.LoadBlock(&blkcid)
 }
 
 func validateTransactions(txs []*transaction.Transaction) bool {
@@ -264,11 +283,11 @@ func (chain *Blockchain) ValidateBlock(blk *block.Block) bool {
 		logger.Info("Block validation failed: Height is less than chaintip")
 		return false
 	}
-	tipHash := chainTip.GetHash()
-	if !blk.Header.PrevHash.IsEqual(&tipHash) {
-		logger.Info("Block validation failed: Invalid PrevHash")
-		return false
-	}
+	// tipHash := chainTip.GetHash()
+	// if !blk.Header.PrevHash.IsEqual(&tipHash) {
+	// 	logger.Info("Block validation failed: Invalid PrevHash")
+	// 	return false
+	// }
 	if !validateTransactions(blk.Transactions) {
 		logger.Info("Block validation failed: Block Contains invalid tx")
 		return false
@@ -281,21 +300,27 @@ func (chain *Blockchain) ValidateBlock(blk *block.Block) bool {
 }
 
 func (chain *Blockchain) reload(oldBlock *block.Block, newBlock *block.Block) ([]*block.Block, error) {
-	logger.Info("Rolling back...", newBlock)
+	logger.Info("Reloading chain from block: ", newBlock.Height)
 	var newChain []*block.Block
 
 	if oldBlock.GetHash().String() == newBlock.GetHash().String() {
 		commonBlock := oldBlock
-		logger.Info("Blockchain rolled back to block", commonBlock)
+		logger.Info("Blockchain reloaded back from block", commonBlock)
 		return newChain, nil
 	} else {
 		newChain = append(newChain, newBlock)
+		logger.Info("new block added to chain: ", string(newBlock.Serialize()))
 		// Get the missing parent blocks by prevHash of newBlock
-		prevBlock, err := chain.LoadBlock(&newBlock.Header.PrevHash)
+		if newBlock.Height==0 {
+			return newChain, nil
+		}
+		logger.Info("fetching block height ", newBlock.Height-1, " for cid: ", newBlock.PrevCid.String())
+		prevBlock, err := chain.LoadBlock(newBlock.PrevCid)
 		if err != nil {
-			logger.Info("Fetching parent hashes of block failed -- aborting reload:", err)
+			logger.Error("Fetching parent hashes of block failed -- aborting reload:", err)
 			return nil, err
 		}
+		logger.Info("block height ", newBlock.Height-1, " loaded!")
 		return chain.reload(oldBlock, prevBlock)
 	}
 }
@@ -307,11 +332,15 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 		headhash := chain.Head.GetHash().String()
 		if blk.Height > chain.Head.Height+1 && prevhash != headhash {
 			// reload chain if prevhash is not chaintip hash
-			chain.reload(chain.Head, blk)
+			logger.Info("Reloading blocks from height: ", blk.Height)
+			_, errReload := chain.reload(chain.Head, blk)
+			if errReload != nil {
+				return nil
+			}
 		}
 		blkCopy := *blk
 		chain.Head = &blkCopy
-		logger.Info("Block accepted, chain head set to block:", blkCopy.Hash) //string(blkCopy.Serialize()))
+		logger.Info("Block accepted, chain head set to block height:", blkCopy.Height) //string(blkCopy.Serialize()))
 		cid, err := chain.PutBlock(&blkCopy)
 		if err != nil {
 			return nil
@@ -325,7 +354,7 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 func (chain *Blockchain) SyncChain(from *block.Block) error {
 	cur := from
 	for {
-		prevcid, _ := cur.Header.PrevHash.ToCid()
+		prevcid := cur.PrevCid
 		haveParent, err := chain.Blockstore.Has(context.Background(), *prevcid)
 		if err != nil {
 			return err
@@ -335,8 +364,8 @@ func (chain *Blockchain) SyncChain(from *block.Block) error {
 			return nil
 		}
 
-		fromhash := from.Header.PrevHash
-		next, err := chain.LoadBlock(&fromhash)
+		fromhash := from.PrevCid
+		next, err := chain.LoadBlock(fromhash)
 		if err != nil {
 			return err
 		}
@@ -347,16 +376,16 @@ func (chain *Blockchain) SyncChain(from *block.Block) error {
 
 func (bc *Blockchain) GetIterator() *Iterator {
 	return &Iterator{
-		bc.Head.Hash,
+		bc.GetBlockCid(bc.Head),
 		bc,
 	}
 }
 
 // GetBlockHashes returns a list of hashes with beginHash and maxNum limit
-func (bc *Blockchain) GetBlockHashes(beginHash *hash.Hash, stopHash hash.Hash, maxNum int) ([]*hash.Hash, error) {
-	var blocks []*hash.Hash
+func (bc *Blockchain) GetBlockCids(beginCid *cid.Cid, stopCid cid.Cid, maxNum int) ([]*cid.Cid, error) {
+	var blocks []*cid.Cid
 	bci := bc.GetIterator()
-	err := bci.LocationHash(beginHash)
+	err := bci.LocationHash(beginCid)
 	if err != nil {
 		return nil, err
 	}
@@ -364,13 +393,13 @@ func (bc *Blockchain) GetBlockHashes(beginHash *hash.Hash, stopHash hash.Hash, m
 	getCount := 0
 	for {
 		block := bci.Next()
-		h := block.GetHash()
+		h := bc.GetBlockCid(block)
 
-		if stopHash.IsEqual(&h) {
+		if stopCid.Equals(*h) {
 			break
 		}
 
-		blocks = append(blocks, &h)
+		blocks = append(blocks, h)
 		getCount += 1
 
 		if len(block.Header.PrevHash) == 0 {
@@ -400,4 +429,13 @@ func (bc *Blockchain) CalcReward(height uint64) *big.Float {
 	reward.SetFloat64(halvingreward)
 
 	return reward
+}
+
+func (bc *Blockchain) GetBlockCid(b *block.Block) *cid.Cid {
+	nd, err := cbor.WrapObject(*b, multihash.BLAKE2B_MIN+31, 32)
+	if err != nil {
+		panic(err)
+	}
+	bcid := nd.Cid()
+	return &bcid
 }

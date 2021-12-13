@@ -22,6 +22,7 @@ func (node *Node) Mine(c chan *block.Block) {
 	for {
 		select {
 		case blk := <-c:
+			//node.blockchain.PutBlock(blk)
 			node.BroadcastBlock(blk)
 		}
 	}

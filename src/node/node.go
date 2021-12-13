@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"time"
 
 	block "badcoin/src/block"
@@ -17,12 +18,34 @@ import (
 
 	proofofwork "badcoin/src/pow"
 
+	"github.com/ipfs/go-cid"
 	ipfsaddr "github.com/ipfs/go-ipfs-addr"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	floodsub "github.com/libp2p/go-libp2p-pubsub"
+	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+
+	bitswap "github.com/ipfs/go-bitswap"
+	network "github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/go-datastore"
+
+	//graphnet "github.com/ipfs/go-graphsync/network"
+
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
+
+	//nonerouting "github.com/ipfs/go-ipfs-routing/none"
+
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+
+	routing "github.com/libp2p/go-libp2p-core/routing"
+
+	dsleveldb "github.com/ipfs/go-ds-leveldb"
 )
+
+// DiscoveryServiceTag is used in our mDNS advertisements to discover other chat peers.
+const DiscoveryServiceTag = "badcoin-network"
 
 type Node struct {
 	p2pNode    host.Host
@@ -33,10 +56,61 @@ type Node struct {
 	pow        *proofofwork.ProofOfWork
 }
 
+func DHTRoutingFactory() func(host.Host) (routing.PeerRouting, error) {
+	makeRouting := func(h host.Host) (routing.PeerRouting, error) {
+		dhtInst, err := dht.New(context.Background(), h) //, opts...)
+		if err != nil {
+			return nil, err
+		}
+		//d.dht = dhtInst
+		return dhtInst, nil
+	}
+
+	return makeRouting
+}
+
+//var router routing.Routing
+func makeDHT(h host.Host) (routing.Routing, error) {
+	// mode := dht.ModeServer
+	// opts := []dht.Option{dht.Mode(mode),
+	// 	// 	//dht.Datastore(repo.ChainDatastore()),
+	// 	// 	//dht.NamespacedValidator("v", validator),
+	// 	//dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
+	// 	// 	dht.QueryFilter(dht.PublicQueryFilter),
+	// 	dht.Datastore(datastore.NewMapDatastore()),
+	// 	dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+	// 	dht.DisableProviders(),
+	// 	dht.DisableValues(),
+	// }
+	// r, err := dht.New(
+	// 	context.Background(), h, opts...,
+	// )
+
+	// if err != nil {
+	// 	return nil, err//errors.Wrap(err, "failed to setup routing")
+	// }
+
+	//r, err := dht.New(context.Background(), h, opts...)
+	r := dht.NewDHT(context.Background(), h, datastore.NewMapDatastore())
+
+	//r := dht.NewDHT(context.Background(),h,datastore.NewMapDatastore())
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return nil, err
+	// }
+	return r, nil
+}
+
 func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 	var node Node
 
-	newNode, err := libp2p.New(libp2p.Defaults)
+	var opts []libp2p.Option
+	opts = append(opts, libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"))
+	opts = append(opts, libp2p.Routing(DHTRoutingFactory()))
+	//router, _ := makeDHT(h)
+	//nr, _ := nonerouting.ConstructNilRouting(context.TODO(), nil, nil, nil)
+
+	newNode, err := libp2p.New(opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -46,8 +120,45 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 		panic(err)
 	}
 
+	// base backing datastore, currently just in memory, but can be swapped out
+	// easily for leveldb or other
+	path := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_bs"
+	fullpath, _ := filepath.Abs(path)
+	//dstore := datastore.NewMapDatastore()
+	dstore, err := dsleveldb.NewDatastore(fullpath, &dsleveldb.Options{
+		Compression: ldbopts.NoCompression,
+		NoSync:      false,
+		Strict:      ldbopts.StrictAll,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// wrap the datastore in a 'content addressed blocks' layer
+	chainblockstore := blockstore.NewBlockstore(dstore)
+
+
+	ccc,_:=cid.Decode("bafk2bzaced7scnipal3tpzll2xxuxcwzxvj53agdfphh57ifpk73pn5hhg3n2")
+	has,_:=chainblockstore.Has(context.Background(),ccc)
+	logger.Info("HAS:",has)
+
+	router, _ := makeDHT(newNode)
+	//nr, _ := nonerouting.ConstructNilRouting(context.TODO(), nil, nil, nil)
+
+	//var router routing.ContentRouting
+	//rot := gnet.NewFromLibp2pHost(h)
+	net := network.NewFromIpfsHost(newNode, router) //, network.Prefix("/bdcchain"))
+
+	//bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(true)}
+	bswap := bitswap.New(context.Background(), net, chainblockstore) //, bitswapOptions...)
+
+	// setup local mDNS discovery
+	if err := setupDiscovery(newNode); err != nil {
+		panic(err)
+	}
+
 	for i, addr := range newNode.Addrs() {
-		logger.Info(i, ": ", addr.String() + "/ipfs/" + newNode.ID().Pretty())
+		logger.Info(i, ": ", addr.String()+"/ipfs/"+newNode.ID().Pretty())
 	}
 
 	if len(os.Args) > 1 {
@@ -65,18 +176,46 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 	}
 
 	blockchain.Init()
-	blockchain := blockchain.NewBlockchain(newNode, configs)
+	chain := blockchain.NewBlockchain(newNode, chainblockstore, bswap, configs)
 
 	node.p2pNode = newNode
 	node.mempool = mempool.NewMempool()
 	node.pubsub = pubsub
-	node.blockchain = blockchain
+	node.blockchain = chain
 	node.wallet = wallet.NewWallet()
 
 	node.ListenBlocks(ctx)
 	node.ListenTransactions(ctx)
 
 	return &node
+}
+
+// discoveryNotifee gets notified when we find a new peer via mDNS discovery
+type discoveryNotifee struct {
+	h host.Host
+}
+
+// HandlePeerFound connects to peers discovered via mDNS. Once they're connected,
+// the PubSub system will automatically start interacting with them if they also
+// support PubSub.
+func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
+	if pi.ID.String() == n.h.ID().String() {
+		return
+	}
+	logger.Info("discovered new peer ", pi.ID.Pretty())
+	err := n.h.Connect(context.Background(), pi)
+	if err != nil {
+		logger.Info("error connecting to peer ", pi.ID.Pretty(), ": ", err)
+	}
+	logger.Info("connected to peer ", pi.ID.Pretty())
+}
+
+// setupDiscovery creates an mDNS discovery service and attaches it to the libp2p Host.
+// This lets us automatically discover peers on the same LAN and connect to them.
+func setupDiscovery(h host.Host) error {
+	// setup mDNS discovery to find local peers
+	s := mdns.NewMdnsService(h, DiscoveryServiceTag, &discoveryNotifee{h: h})
+	return s.Start()
 }
 
 func (node *Node) ListenBlocks(ctx context.Context) {
@@ -142,6 +281,7 @@ func (node *Node) CreateNewBlock() *block.Block {
 	blk.Header.Memo = blkmsg
 	//body
 	blk.Height = height
+	blk.PrevCid = node.blockchain.GetBlockCid(node.blockchain.Head)
 	blk.Reward = node.blockchain.CalcReward(blk.Height)
 	blk.Transactions = node.mempool.SelectTransactions()
 	blk.TxsCount = uint64(len(blk.Transactions))
