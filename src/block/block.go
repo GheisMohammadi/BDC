@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ipfs/go-cid"
 )
 
 type BlockMessage struct {
@@ -35,6 +37,7 @@ type BlockHeader struct {
 type Block struct {
 	Height       uint64
 	Hash         hash.Hash
+	PrevCid      *cid.Cid
 	Header       BlockHeader
 	Reward       *big.Float
 	TxsCount     uint64
@@ -139,7 +142,7 @@ func ReadBlockMessage(height uint64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// we iterate through every user within our users array and
 	// print out the user Type, their name, and their facebook url
 	// as just an example

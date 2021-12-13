@@ -3,37 +3,37 @@ package blockchain
 import (
 	"log"
 
-	hash "badcoin/src/helper/hash"
-
 	//"github.com/michain/dotcoin/storage"
 	block "badcoin/src/block"
+
+	"github.com/ipfs/go-cid"
 )
 
 // Iterator implement a iterator for blockchain blocks
 type Iterator struct {
-	currentHash hash.Hash
-	bc          *Blockchain
+	currentCid *cid.Cid
+	bc         *Blockchain
 }
 
 // Next returns next block starting from the tip
 func (i *Iterator) Next() *block.Block {
 
-	blk, err := i.bc.LoadBlock(&i.currentHash)
+	blk, err := i.bc.LoadBlock(i.currentCid)
 	if err != nil {
 		log.Panic(err)
 	}
 	if blk != nil {
-		i.currentHash = blk.Header.PrevHash
+		i.currentCid = blk.PrevCid
 	}
 	return blk
 
 }
 
 // LocationHash locate current hash
-func (i *Iterator) LocationHash(locateHash *hash.Hash) error {
-	_, err := i.bc.LoadBlock(locateHash)
+func (i *Iterator) LocationHash(locateCid *cid.Cid) error {
+	_, err := i.bc.LoadBlock(locateCid)
 	if err == nil {
-		i.currentHash = *locateHash
+		i.currentCid = locateCid
 	}
 	return err
 }

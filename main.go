@@ -46,7 +46,7 @@ func main() {
 		node.StartMiner()
 	}
 	//Start server
-	srv := server.CreateNewServer(ctx,node,"3000")
+	srv := server.CreateNewServer(ctx,node,Configs.RpcSet.Port)
 	srv.ListenAndServe()
 
 }
