@@ -86,10 +86,12 @@ func NewTransaction(pubKey []byte, to string, value float64, data string) *Trans
 }
 
 func (tx *Transaction) GetTxid() hash.Hash {
-	tx.ID = *hash.ZeroHash()
-	ser := tx.Serialize()
-	hash, _ := hash.NewHash(ser)
-	return *hash
+	txc := tx.TrimmedCopy()
+	txc.ID = *hash.ZeroHash()
+	ser := txc.Serialize()
+	hsh := hash.HashH(ser)
+	fmt.Println(hsh)
+	return hsh
 }
 
 func (tx *Transaction) GetTxidString() string {

@@ -37,3 +37,11 @@ func (mempool *Mempool) SelectTransactions() []*transaction.Transaction {
 func (mempool *Mempool) SetTransaction(txid hash.Hash, tx transaction.Transaction) {
     mempool.transactions[txid] = tx
 }
+
+func (mempool *Mempool) TransactionsCount() int {
+    return len(mempool.transactions)
+}
+
+func (mempool *Mempool) Clear() {
+    mempool.transactions = make(map[hash.Hash]transaction.Transaction)
+}
