@@ -123,9 +123,12 @@ func (b *Block) UpdateHash() {
 	b.Hash = b.CalcHash()
 }
 
-func ReadBlockMessage(height uint64) (string, error) {
+func ReadBlockMessage(height uint64, messags_json_path string) (string, error) {
 
 	messagefile, _ := filepath.Abs("config/block_message.json")
+	if len(messags_json_path) > 0 {
+		messagefile = messags_json_path
+	}
 	//logger.Info(messagefile)
 	jsonFile, err := os.Open(messagefile)
 	if err != nil {

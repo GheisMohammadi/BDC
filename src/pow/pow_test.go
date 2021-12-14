@@ -6,7 +6,7 @@ import (
 )
 
 func TestShift(t *testing.T) {
-	pow := NewProofOfWorkT(24)
+	pow := NewProofOfWorkT(16)
 	fmt.Printf("target zeros: %d\n", (int(256)-pow.Target.BitLen()+1)/8)
 	fmt.Printf("target: %v\n", pow.Target.Bytes())
 
@@ -15,7 +15,7 @@ func TestShift(t *testing.T) {
 
 	fmt.Println("mining ...")
 
-	res := pow.solveHash(prevhash, txHash, nil)
+	res := pow.solveHash(prevhash, txHash,[]byte{}, nil)
 	if res == false {
 		t.Failed()
 	}

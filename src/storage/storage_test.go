@@ -27,13 +27,13 @@ func Test_Leveldb_Storage(t *testing.T) {
 		t.Error(errInit)
 	}
 
-	lvlStorage.SaveBlock([]byte("block hash"),[]byte("block data"))
+	//lvlStorage.SaveBlock([]byte("block hash"),[]byte("block data"))
 
-	blockdata,errBlock := lvlStorage.GetBlock([]byte("block hash"))
-	if errBlock!=nil {
-		t.Error(errBlock)
-	}
-	t.Log(string(blockdata[:]))
+	// blockdata,errBlock := lvlStorage.GetBlock([]byte("block hash"))
+	// if errBlock!=nil {
+	// 	t.Error(errBlock)
+	// }
+	// t.Log(string(blockdata[:]))
 
 	lvlStorage.Close()
 }

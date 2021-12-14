@@ -2,6 +2,8 @@ package block
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -22,9 +24,16 @@ func TestHashBlock(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
-	msg,err := ReadBlockMessage(13)
-	if err!=nil {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	// exPath := filepath.Dir(dir)
+	messagefile, _ := filepath.Abs(dir + "/../../config/block_message.json")
+
+	msg, err := ReadBlockMessage(13, messagefile)
+	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println("found msg: ",msg)
+	fmt.Println("found msg: ", msg)
 }

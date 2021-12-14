@@ -34,7 +34,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
-	//nonerouting "github.com/ipfs/go-ipfs-routing/none"
+	//
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 
@@ -267,7 +267,7 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 func (node *Node) CreateNewBlock() *block.Block {
 	var blk block.Block
 	height := node.blockchain.Head.Height + 1
-	blkmsg, errmsg := block.ReadBlockMessage(height)
+	blkmsg, errmsg := block.ReadBlockMessage(height,"")
 	if errmsg != nil {
 		logger.Error(errmsg)
 		return nil

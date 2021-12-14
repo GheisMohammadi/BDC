@@ -37,7 +37,7 @@ func (tx Transaction) String() string {
 	lines = append(lines, fmt.Sprintf("       To:           %s", tx.To))
 	lines = append(lines, fmt.Sprintf("       PublicKey:    %v", tx.PublicKey))
 	lines = append(lines, fmt.Sprintf("       Fee:		    %d", tx.Fee))
-	lines = append(lines, fmt.Sprintf("       Value:		%d", tx.Value))
+	lines = append(lines, fmt.Sprintf("       Value:		%f", tx.Value))
 	lines = append(lines, fmt.Sprintf("       Signature:    %x", tx.Signature))
 	lines = append(lines, fmt.Sprintf("       Data:         %x", tx.Data))
 

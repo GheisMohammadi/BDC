@@ -15,7 +15,7 @@ func Init(json bool) {
 }
 
 func Info(args ...interface{}) {
-	logger.Info(args)
+	logger.Info(args[0:])
 }
 
 func Trace(args ...interface{}) {
