@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestMempool(t *testing.T) {
+func TestNumber(t *testing.T) {
 	ba := Int64ToByteArray(123)
-	fmt.Println(ba[0],ba[1],ba[2])
+	fmt.Println(ba)
 }
