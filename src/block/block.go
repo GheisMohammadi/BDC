@@ -15,8 +15,8 @@ import (
 )
 
 type BlockMessage struct {
-	Height  uint64 `json:"height"`
-	Message string `json:"message"`
+	Height  []int64 `json:"height"`
+	Message string  `json:"message"`
 }
 
 type BlockMessages struct {
@@ -150,10 +150,24 @@ func ReadBlockMessage(height uint64, messags_json_path string) (string, error) {
 	// print out the user Type, their name, and their facebook url
 	// as just an example
 	for i := 0; i < len(memos.Messages); i++ {
-		// fmt.Println("Height: ", memos.Messages[i].Height)
-		// fmt.Println("Message: ", memos.Messages[i].Message)
-		if memos.Messages[i].Height == height {
-			return memos.Messages[i].Message, nil
+		heights := memos.Messages[i].Height
+		message := memos.Messages[i].Message
+
+		if len(heights) == 1 {
+			if heights[0] == int64(height) {
+				return message, nil
+			}
+		} else if len(heights) == 2 {
+			if int64(height) >= heights[0] && (int64(height) <= heights[1] || heights[1] == -1) {
+				return message, nil
+			}
+		} else if len(heights) > 2 {
+			for _, h := range heights {
+				if height == uint64(h) {
+					return message, nil
+				}
+			}
+
 		}
 	}
 

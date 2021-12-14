@@ -31,7 +31,7 @@ func TestMessage(t *testing.T) {
 	// exPath := filepath.Dir(dir)
 	messagefile, _ := filepath.Abs(dir + "/../../config/block_message.json")
 
-	msg, err := ReadBlockMessage(13, messagefile)
+	msg, err := ReadBlockMessage(85, messagefile)
 	if err != nil {
 		t.Error(err)
 	}

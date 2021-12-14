@@ -1,20 +1,20 @@
 {
     "Messages": [
         {
-            "height": 13,
-            "message": "block #13 message"
+            "height": [13,19],
+            "message": "test message for blocks 13 to 19"
         },
         {
-            "height": 33,
-            "message": "block #33 message"
+            "height": [33],
+            "message": "test message for block #33"
         },
         {
-            "height": 69,
-            "message": "block #69 message"
+            "height": [69,85,96],
+            "message": "test message for blocks #69, #85, #96"
         },
         {
-            "height": 85,
-            "message": "block #85 message"
+            "height": [100,-1],
+            "message": "test message for any block after #100"
         }
     ]
 }
