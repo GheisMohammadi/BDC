@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	config "badcoin/src/config"
@@ -13,5 +14,12 @@ func TestServer(t *testing.T) {
 	configs, _ := config.Init("")
 	newNode := node.CreateNewNode(ctx, configs)
 	server := CreateNewServer(ctx, newNode, "3000")
-	server.ListenAndServe()
+	if server==nil {
+		t.Error("server creation failed")
+	}
+	server = nil
+	//server.ListenAndServe()
+	if err := os.RemoveAll("data"); err != nil {
+		t.Error(err)
+	}
 }
