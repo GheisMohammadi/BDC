@@ -49,26 +49,54 @@ func Init() {
 	cbor.RegisterCborType(transaction.Transaction{})
 }
 
-func LoadBlockchain() {
-	// keychan,_ := chainblockstore.AllKeysChan(context.Background())
-	// for {
-	// 	select {
-	// 	case k := <-keychan:
-	// 		if k.ByteLen()==0 {
-	// 			break
-	// 		} else {
-	// 			logger.Info("KEYS: ",k.String())
-				
-	// 		}
-	// 	default:
-	// 		break
-	// 	}
-	// }
+//Find latest Height
+//Find Head
+func LoadBlockchain(chainblockstore blockstore.Blockstore) (*block.Block, *block.Block, error) {
+	ctx := context.TODO()
+	keychan, _ := chainblockstore.AllKeysChan(ctx)
+	lastHeight := uint64(0)
+	var head *block.Block
+	var genesis *block.Block
+	loadedblocks := 0
+	for {
+		select {
+		case k, ok := <-keychan:
+			if ok == false {
+				logger.Info("iterating block store completed! ",loadedblocks," blocks are loaded")
+				return head, genesis, nil
+			}
+			if k.ByteLen() == 0 {
+				break
+			} else {
+				blkcid, _ := cid.Decode(k.String())
+				data, err := chainblockstore.Get(ctx, blkcid)
+				if err != nil {
+					return nil, nil, err
+				}
+				var blk block.Block
+				if err := cbor.DecodeInto(data.RawData(), &blk); err != nil {
+					return nil, nil, err
+				}
+				loadedblocks++
+				if blk.Height > lastHeight {
+					lastHeight = blk.Height
+					head = &blk
+				}
+				if blk.Height == 0 {
+					genesis = &blk
+				}
+			}
+		case <-ctx.Done():
+			logger.Info("loading is done!")
+			return head, genesis, nil
+		}
+	}
+
 }
 
 func NewBlockchain(h host.Host, chainblockstore blockstore.Blockstore, bswap exchange.Interface, configs *config.Configurations) *Blockchain {
 	//create block index db
-	blockindexDBPath := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_bi"
+	blockindexDBPath := "data/" + configs.Storage.DBName + "_" + configs.ID + "_bi"
 	var errIndexDB error
 	blockindex, errIndexDB := leveldb.OpenFile(blockindexDBPath, nil)
 	if errIndexDB != nil {
@@ -77,7 +105,7 @@ func NewBlockchain(h host.Host, chainblockstore blockstore.Blockstore, bswap exc
 	}
 
 	//Accounts db
-	accPath := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_accs"
+	accPath := "data/" + configs.Storage.DBName + "_" + configs.ID + "_accs"
 	accFullpath, _ := filepath.Abs(accPath)
 	accDB, errAccDB := leveldb.OpenFile(accFullpath, nil)
 	if errAccDB != nil {
@@ -90,11 +118,28 @@ func NewBlockchain(h host.Host, chainblockstore blockstore.Blockstore, bswap exc
 	// 'blockservice'
 	chainblockserviceice := blockservice.NewWriteThrough(chainblockstore, bswap)
 
-	genesis := CreateGenesisBlock(configs.Genesis.Nonce, configs.Genesis.Message)
+	//load blockchain
+	curhead, curgenesis, errLoad := LoadBlockchain(chainblockstore)
+	if errLoad != nil {
+		logger.Error(errLoad)
+		panic(errLoad)
+	}
+
+	var genesis *block.Block
+	var head *block.Block
+	if curhead == nil {
+		logger.Info("creating genesis block ...")
+		genesis = CreateGenesisBlock(configs.Genesis.Nonce, configs.Genesis.Message)
+		head = genesis
+	} else {
+		logger.Info("recovered current stored chain. Head is on the height: ", curhead.Height)
+		genesis = curgenesis
+		head = curhead
+	}
 
 	chain := &Blockchain{
 		GenesisBlock: genesis,
-		Head:         genesis,
+		Head:         head,
 		BlockService: chainblockserviceice,
 		Blockstore:   chainblockstore,
 		BlockIndex:   blockindex,
@@ -113,8 +158,8 @@ func NewBlockchain(h host.Host, chainblockstore blockstore.Blockstore, bswap exc
 //LoadBlock loads block from local db or other nodes using block service
 func (chain *Blockchain) LoadBlock(blkcid *cid.Cid) (*block.Block, error) {
 
-	if blkcid==nil {
-		return nil,nil
+	if blkcid == nil {
+		return nil, nil
 	}
 
 	bsrv := chain.BlockService
@@ -311,7 +356,7 @@ func (chain *Blockchain) reload(oldBlock *block.Block, newBlock *block.Block) ([
 		newChain = append(newChain, newBlock)
 		logger.Info("new block added to chain: ", string(newBlock.Serialize()))
 		// Get the missing parent blocks by prevHash of newBlock
-		if newBlock.Height==0 {
+		if newBlock.Height == 0 {
 			return newChain, nil
 		}
 		logger.Info("fetching block height ", newBlock.Height-1, " for cid: ", newBlock.PrevCid.String())

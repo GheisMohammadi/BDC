@@ -18,7 +18,6 @@ import (
 
 	proofofwork "badcoin/src/pow"
 
-	"github.com/ipfs/go-cid"
 	ipfsaddr "github.com/ipfs/go-ipfs-addr"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -122,8 +121,9 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 
 	// base backing datastore, currently just in memory, but can be swapped out
 	// easily for leveldb or other
-	path := "../../data/" + configs.Storage.DBName + "_" + configs.ID + "_bs"
+	path := "data/" + configs.Storage.DBName + "_" + configs.ID + "_bs"
 	fullpath, _ := filepath.Abs(path)
+	logger.Info("data store path: ", fullpath)
 	//dstore := datastore.NewMapDatastore()
 	dstore, err := dsleveldb.NewDatastore(fullpath, &dsleveldb.Options{
 		Compression: ldbopts.NoCompression,
@@ -137,10 +137,9 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 	// wrap the datastore in a 'content addressed blocks' layer
 	chainblockstore := blockstore.NewBlockstore(dstore)
 
-
-	ccc,_:=cid.Decode("bafk2bzaced7scnipal3tpzll2xxuxcwzxvj53agdfphh57ifpk73pn5hhg3n2")
-	has,_:=chainblockstore.Has(context.Background(),ccc)
-	logger.Info("HAS:",has)
+	// ccc,_:=cid.Decode("bafk2bzaced7scnipal3tpzll2xxuxcwzxvj53agdfphh57ifpk73pn5hhg3n2")
+	// has,_:=chainblockstore.Has(context.Background(),ccc)
+	// logger.Info("HAS:",has)
 
 	router, _ := makeDHT(newNode)
 	//nr, _ := nonerouting.ConstructNilRouting(context.TODO(), nil, nil, nil)
