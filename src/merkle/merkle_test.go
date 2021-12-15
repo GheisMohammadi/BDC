@@ -26,19 +26,19 @@ func TestNewMerkleNode(t *testing.T) {
 	// Level 3
 	n7 := NewMerkleNode(n5, n6, nil)
 
-	if "488bf6d1f1e1857fd0395f165a54db5bd72242cc1003220b3aa047e8b56a4006" == hex.EncodeToString(n5.Data) {
+	if "1b37eba70eba8f9296ac8d4ac5898d69467e4e31366b6cac79dadf5f81579298" == hex.EncodeToString(n5.Data) {
 		t.Log(hex.EncodeToString(n5.Data))
 	} else {
 		t.Error("Level 1 hash 1 is correct", hex.EncodeToString(n5.Data))
 	}
 
-	if "636dc4a10bb91a4ea1a6e90c579bb4e59448555bb21fdb81f3b012bbc312bff5" == hex.EncodeToString(n6.Data) {
+	if "10266b901c67ffbf48489d9b88614368ad9c00f5cc65e912cf7bdabe30d5cb06" == hex.EncodeToString(n6.Data) {
 		t.Log(hex.EncodeToString(n6.Data))
 	} else {
 		t.Error("Level 1 hash 2 is correct", hex.EncodeToString(n6.Data))
 	}
 
-	if "7c98725e5d636e7384b75f0b876ae3831894616a2ce9142fbdc815859ceee925" == hex.EncodeToString(n7.Data) {
+	if "38addfe1aa839ab8842dcc11b284e027b0c43332fc3bd8b477413075bde5ea18" == hex.EncodeToString(n7.Data) {
 		t.Log(hex.EncodeToString(n7.Data))
 	} else {
 		t.Error("Root hash is correct", hex.EncodeToString(n7.Data))

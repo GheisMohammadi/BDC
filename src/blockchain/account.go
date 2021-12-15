@@ -110,13 +110,16 @@ func (chain *Blockchain) UpdateAccounts(txs []*transaction.Transaction) error {
 	}
 
 	for addr, val := range values {
-		if bal,err := chain.GetAccountBalance(addr);err!=nil {
-			return errors.CheckAccountBalanceFailed
-		} else {
-			newbal := big.NewFloat(0).Add(bal,val)	
-			if newbal.Cmp(big.NewFloat(0)) == -1 {
-				return errors.NotEnoughAccountBalance
+		bal, err := chain.GetAccountBalance(addr)
+		if err != nil {
+			if err != leveldb.ErrNotFound {
+				return errors.CheckAccountBalanceFailed
 			}
+			bal = big.NewFloat(0)
+		}
+		newbal := big.NewFloat(0).Add(bal, val)
+		if newbal.Cmp(big.NewFloat(0)) == -1 {
+			return errors.NotEnoughAccountBalance
 		}
 	}
 	return nil

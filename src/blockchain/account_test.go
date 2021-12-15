@@ -78,10 +78,10 @@ func TestUpdateAccounts(t *testing.T) {
 	addr2 := wal2.GetStringAddress()
 	addr3 := wal3.GetStringAddress()
 
-	tx1 := transaction.NewTransaction(p1, addr2, 300, "1->2") //acc1: -300    acc2: 300
-	tx2 := transaction.NewTransaction(p2, addr3, 200, "2->3") //acc2: 100     acc3: 200
-	tx3 := transaction.NewTransaction(p3, addr1, 200, "3->1") //acc3: 0       acc1: -100
-	tx4 := transaction.NewTransaction(p2, addr1, 100, "2->1") //acc2: 0       acc1: 0
+	tx1 := transaction.NewTransaction(p1, 0, addr2, 300, "1->2") //acc1: -300    acc2: 300
+	tx2 := transaction.NewTransaction(p2, 0, addr3, 200, "2->3") //acc2: 100     acc3: 200
+	tx3 := transaction.NewTransaction(p3, 0, addr1, 200, "3->1") //acc3: 0       acc1: -100
+	tx4 := transaction.NewTransaction(p2, 0, addr1, 100, "2->1") //acc2: 0       acc1: 0
 
 	txs := []*transaction.Transaction{tx1, tx2, tx3, tx4}
 
