@@ -117,7 +117,6 @@ func (tx *Transaction) GetTxid() hash.Hash {
 	txc.ID = *hash.ZeroHash()
 	ser := txc.Serialize()
 	hsh := hash.HashH(ser)
-	fmt.Println(hsh)
 	return hsh
 }
 

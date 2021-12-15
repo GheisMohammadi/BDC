@@ -323,6 +323,10 @@ func (node *Node) GetWallet() *wallet.Wallet {
 	return node.wallet
 }
 
+func (node *Node) GetWalletSet() *wallet.WalletSet {
+	return node.walletset
+}
+
 func (node *Node) GetNewAddress() *NewAddressResponse {
 	var res NewAddressResponse
 	addr := node.wallet.GetNewAddress()
@@ -351,7 +355,7 @@ func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 			return nil
 		} else {
 			if tx.Nonce!=nonce+1 {
-				logger.Info("Tx nonce is invalid. Current account nonce is: ", nonce)
+				logger.Info("Tx nonce is invalid. Current account nonce is: ", nonce," but tx nonce is: ",tx.Nonce)
 				return nil
 			}
 		}

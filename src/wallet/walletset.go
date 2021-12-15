@@ -147,3 +147,9 @@ func (ws *WalletSet) SaveToFile() {
 func getWalletFileName(nodeID string) string {
 	return fmt.Sprintf(walletFileFormat, nodeID)
 }
+
+func (ws *WalletSet) AddMinerNonce() uint64 {
+	ws.Wallets[ws.MinerAddress].Nonce++
+	ws.SaveToFile()
+	return ws.Wallets[ws.MinerAddress].Nonce
+}

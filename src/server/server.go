@@ -133,7 +133,7 @@ func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 
 	resp := srv.Node.SendTransaction(tx)
 	if resp != nil {
-		wallet.AddNonce()
+		srv.Node.GetWalletSet().AddMinerNonce()
 	}
 	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {

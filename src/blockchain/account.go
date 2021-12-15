@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	errors "badcoin/src/helper/error"
-	logger "badcoin/src/helper/logger"
 	"badcoin/src/transaction"
 	"encoding/json"
 	"math/big"
@@ -64,7 +63,7 @@ func (chain *Blockchain) AddToAccountBalance(address string, value float64, incr
 	if increasenonce {
 		acc.Nonce++
 	}
-	logger.Info("acc balance updated:", acc.Balance.String())
+	//logger.Info("acc balance updated:", acc.Balance.String())
 	err := chain.StoreAccount(acc)
 	if err != nil {
 		return err
@@ -90,7 +89,7 @@ func (chain *Blockchain) GetAccountNonce(address string) (uint64, error) {
 		return 0, err
 	} else {
 		acc, _ := DeserializeAccount(accbytes)
-		return acc.Nonce,nil
+		return acc.Nonce, nil
 	}
 }
 
@@ -105,7 +104,7 @@ func (chain *Blockchain) FetchAccountDetails(address string) (*Account, error) {
 	}
 }
 
-func (chain *Blockchain) CalcAccountsUpdates(txs []*transaction.Transaction) (map[string]*big.Float,error) {
+func (chain *Blockchain) CalcAccountsUpdates(txs []*transaction.Transaction) (map[string]*big.Float, error) {
 	values := make(map[string]*big.Float)
 	for _, tx := range txs {
 		val := big.NewFloat(float64(tx.Value))
@@ -125,13 +124,13 @@ func (chain *Blockchain) CalcAccountsUpdates(txs []*transaction.Transaction) (ma
 		bal, err := chain.GetAccountBalance(addr)
 		if err != nil {
 			if err != leveldb.ErrNotFound {
-				return nil,errors.CheckAccountBalanceFailed
+				return nil, errors.CheckAccountBalanceFailed
 			}
 			bal = big.NewFloat(0)
 		}
 		newbal := big.NewFloat(0).Add(bal, val)
 		if newbal.Cmp(big.NewFloat(0)) == -1 {
-			return nil,errors.NotEnoughAccountBalance
+			return nil, errors.NotEnoughAccountBalance
 		}
 	}
 
@@ -139,24 +138,24 @@ func (chain *Blockchain) CalcAccountsUpdates(txs []*transaction.Transaction) (ma
 		bal, err := chain.GetAccountBalance(addr)
 		if err != nil {
 			if err != leveldb.ErrNotFound {
-				return nil,errors.CheckAccountBalanceFailed
+				return nil, errors.CheckAccountBalanceFailed
 			}
 			bal = big.NewFloat(0)
 		}
 		newbal := big.NewFloat(0).Add(bal, val)
 		if newbal.Cmp(big.NewFloat(0)) == -1 {
-			return nil,errors.NotEnoughAccountBalance
+			return nil, errors.NotEnoughAccountBalance
 		}
 	}
 
-	return values,nil
+	return values, nil
 }
 
 func (chain *Blockchain) UpdateAccounts(values map[string]*big.Float) error {
 
 	for addr, val := range values {
-		addvalue,_ := val.Float64()
-		chain.AddToAccountBalance(addr,addvalue,true)
+		addvalue, _ := val.Float64()
+		chain.AddToAccountBalance(addr, addvalue, true)
 	}
 
 	return nil
