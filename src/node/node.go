@@ -345,6 +345,16 @@ func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 				//panic(errors.New("Sending tx failed, account doesn't have enough balance"))
 			}
 		}
+		//check nonce
+		if nonce,err:=node.blockchain.GetAccountNonce(tx.From); err!=nil {
+			logger.Info("Checking account nonce failed, check balance failed")
+			return nil
+		} else {
+			if tx.Nonce!=nonce+1 {
+				logger.Info("Tx nonce is invalid. Current account nonce is: ", nonce)
+				return nil
+			}
+		}
 		//TODO: validate TO address
 		var res SendTxResponse
 		txid := tx.GetTxid()

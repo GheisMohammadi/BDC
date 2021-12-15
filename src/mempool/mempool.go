@@ -1,10 +1,11 @@
 package mempool
 
 import (
+	errors "badcoin/src/helper/error"
 	hash "badcoin/src/helper/hash"
+	logger "badcoin/src/helper/logger"
 	"badcoin/src/transaction"
 	"math/big"
-	logger "badcoin/src/helper/logger"
 )
 
 type getAcc func(addr string) (*big.Float, uint64, error)
@@ -37,19 +38,25 @@ func (mempool *Mempool) SelectTransactions(f getAcc) []*transaction.Transaction 
 		if bal, nonce, err := f(addr); err != nil {
 			return make([]*transaction.Transaction, 0)
 		} else {
-            //value should be less than balance and also checking the nonce 
+			//value should be less than balance and also checking the nonce
 			if bal.Cmp(big.NewFloat(tx.Value)) >= 0 && tx.Nonce == nonce+1 {
 				txs = append(txs, &tx)
 			} else {
-				logger.Info("tx with value:",tx.Value,"rejected from mempool. acc balance is: ", bal.String()," nonce: ",tx.Nonce," and account nonce is: ",nonce)
+				logger.Info("tx with value:", tx.Value, "rejected from mempool. acc balance is: ", bal.String(), " nonce: ", tx.Nonce, " and account nonce is: ", nonce)
 			}
 		}
 	}
 	return txs
 }
 
-func (mempool *Mempool) SetTransaction(txid hash.Hash, tx transaction.Transaction) {
+func (mempool *Mempool) SetTransaction(txid hash.Hash, tx transaction.Transaction) error {
+	for _, mtx := range mempool.transactions {
+		if tx.From == mtx.From {
+			return errors.AlreadyHasPendingTx
+		}
+	}
 	mempool.transactions[txid] = tx
+	return nil
 }
 
 func (mempool *Mempool) TransactionsCount() int {

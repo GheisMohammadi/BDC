@@ -41,4 +41,5 @@ require (
 	github.com/urfave/cli v1.22.1
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2 // indirect
 	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e
+	golang.org/x/tools v0.1.8 // indirect
 )

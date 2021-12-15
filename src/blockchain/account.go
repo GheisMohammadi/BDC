@@ -85,6 +85,15 @@ func (chain *Blockchain) GetAccountBalance(address string) (*big.Float, error) {
 	return bal, nil
 }
 
+func (chain *Blockchain) GetAccountNonce(address string) (uint64, error) {
+	if accbytes, err := chain.Accounts.Get([]byte(address), nil); err != nil {
+		return 0, err
+	} else {
+		acc, _ := DeserializeAccount(accbytes)
+		return acc.Nonce,nil
+	}
+}
+
 func (chain *Blockchain) FetchAccountDetails(address string) (*Account, error) {
 	bal := new(big.Float)
 	bal.SetInt64(0)

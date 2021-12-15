@@ -20,12 +20,6 @@ var BlockSizeTooBig = errors.New("block serialized is too big")
 
 var BlockTooManyTransactions = errors.New("block has too many transactions")
 
-var FirstTxNotCoinbase = errors.New("first transaction in block is not a coinbase")
-
-var NotVerifyTransaction = errors.New("block has not verfiy transaction")
-
-var MultipleCoinbases = errors.New("block contains second coinbase transaction")
-
 var BlockBadMerkleRoot = errors.New("block merkle root is invalid")
 
 var BlockDuplicateTx = errors.New("block contains duplicate transaction")
@@ -35,3 +29,7 @@ var NotEnoughAccountBalance = errors.New("Not enough account balance")
 var CheckAccountBalanceFailed = errors.New("checking of account balance failed")
 
 var ExchangeISNotOnline = errors.New("Exchange is not online")
+
+var InvalidNonce = errors.New("Nonce is invalid")
+
+var AlreadyHasPendingTx = errors.New("Account already has pending transaction")

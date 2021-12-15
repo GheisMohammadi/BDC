@@ -71,6 +71,40 @@ func CreateNewServer(ctx context.Context, servernode *node.Node, port string) *h
 
 }
 
+func (srv *Server) HandleSendSignedTx(w http.ResponseWriter, r *http.Request) {
+
+	pubKeystr := r.FormValue("pubKey")
+	to := r.FormValue("to")
+	val := r.FormValue("value")
+	signaturestr := r.FormValue("signature")
+	data := r.FormValue("data")
+
+	logger.Info("call sendtx ", val, " BDC to", to)
+
+	value, ok := big.NewFloat(0).SetString(val)
+	if ok == false {
+		panic("invalid tx value")
+	}
+
+	wallet := srv.Node.GetWallet()
+	pubKey := []byte(pubKeystr)
+	nonce := wallet.Nonce + 1
+	signature := []byte(signaturestr)
+	
+	v,_ := value.Float64()
+	tx := transaction.NewSignedTransaction(pubKey, nonce, to, v, signature, data)
+
+	resp := srv.Node.SendTransaction(tx)
+	if resp == nil {
+		json.NewEncoder(w).Encode("tx send failed")
+		return
+	}
+	err := json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 
 	to := r.FormValue("to")

@@ -47,3 +47,9 @@ ok      badcoin/src/storage/level       (cached)
 ok      badcoin/src/transaction (cached)
 ok      badcoin/src/wallet      0.002s
 ```
+
+and for test coverage use command below
+
+`
+go test ./src/... -coverprofile=./c.out && go tool cover -html=c.out && unlink ./c.out
+`

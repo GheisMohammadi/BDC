@@ -87,6 +87,31 @@ func NewTransaction(pubKey []byte, nonce uint64, to string, value float64, data 
 	return &tx
 }
 
+func NewSignedTransaction(pubKey []byte, nonce uint64, to string, value float64, signature []byte, data string) *Transaction {
+
+	fromBytes := address.FromPublicKey(pubKey)
+	from := address.ToString(fromBytes)
+
+	now := time.Now()
+
+	tx := Transaction{
+		ID:        *hash.ZeroHash(),
+		Nonce:     nonce,
+		PublicKey: pubKey,
+		Signature: signature,
+		Timestamp: now.UnixMilli(),
+		From:      from,
+		To:        to,
+		Fee:       0,
+		Value:     value,
+		Data:      data,
+	}
+
+	tx.UpdateHash()
+
+	return &tx
+}
+
 func (tx *Transaction) GetTxid() hash.Hash {
 	txc := tx.TrimmedCopy()
 	txc.ID = *hash.ZeroHash()
