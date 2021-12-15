@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"math/big"
 	"os"
 	"path/filepath"
 	"time"
@@ -267,7 +268,7 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 func (node *Node) CreateNewBlock() *block.Block {
 	var blk block.Block
 	height := node.blockchain.Head.Height + 1
-	blkmsg, errmsg := block.ReadBlockMessage(height,"")
+	blkmsg, errmsg := block.ReadBlockMessage(height, "")
 	if errmsg != nil {
 		logger.Error(errmsg)
 		return nil
@@ -282,7 +283,14 @@ func (node *Node) CreateNewBlock() *block.Block {
 	blk.Height = height
 	blk.PrevCid = node.blockchain.GetBlockCid(node.blockchain.Head)
 	blk.Reward = node.blockchain.CalcReward(blk.Height)
-	blk.Transactions = node.mempool.SelectTransactions()
+	getBalance := func(addr string) (*big.Float,uint64,error){
+		if acc,err := node.blockchain.FetchAccountDetails(addr); err!=nil {
+			return nil,0,err
+		} else {
+			return &acc.Balance,acc.Nonce,nil
+		}
+	}
+	blk.Transactions = node.mempool.SelectTransactions(getBalance)
 	blk.TxsCount = uint64(len(blk.Transactions))
 	return &blk
 }
@@ -310,6 +318,19 @@ func (node *Node) GetNewAddress() *NewAddressResponse {
 func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 	// Check that node has key to send tx from address
 	if node.wallet.GetStringAddress() == tx.From {
+		//check account balance
+		if bal, err := node.blockchain.GetAccountBalance(tx.From); err != nil {
+			logger.Info("Sending transaction failed, check balance failed")
+			return nil
+			//panic(errors.New("Sending tx failed, check balance failed"))
+		} else {
+			if bal.Cmp(big.NewFloat(tx.Value)) == -1 {
+				logger.Info("Sending transaction failed, not enough balance:",bal.String())
+				return nil
+				//panic(errors.New("Sending tx failed, account doesn't have enough balance"))	
+			}
+		}
+		//TODO: validate TO address
 		var res SendTxResponse
 		txid := tx.GetTxid()
 		node.mempool.SetTransaction(txid, *tx)
@@ -326,5 +347,11 @@ func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 func (node *Node) GetInfo() *GetInfoResponse {
 	var res GetInfoResponse
 	res.BlockHeight = node.blockchain.Head.Height
+	res.NodeAddress = node.wallet.GetStringAddress()
+	bal, errBalance := node.blockchain.GetAccountBalance(node.wallet.GetStringAddress())
+	if errBalance != nil {
+		logger.Debug("can't get balance: ", errBalance)
+	}
+	res.NodeBalance = bal
 	return &res
 }

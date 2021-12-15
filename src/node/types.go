@@ -1,17 +1,23 @@
 package node
 
+import (
+	"math/big"
+)
+
 type HealthCheckResponse struct {
-    Text     string
-}   
+	Text string
+}
 
 type GetInfoResponse struct {
-    BlockHeight     uint64
-}   
+	BlockHeight uint64
+	NodeAddress string
+	NodeBalance *big.Float
+}
 
 type SendTxResponse struct {
-    Txid       string
+	Txid string
 }
 
 type NewAddressResponse struct {
-    Address     string
+	Address string
 }

@@ -22,12 +22,13 @@ const addressChecksumLen = 4
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
 	PublicKey  []byte
+	Nonce      uint64
 }
 
 // newWallet creates and returns a Wallet
 func NewWallet() *Wallet {
 	private, public := newKeyPair()
-	wallet := Wallet{private, public}
+	wallet := Wallet{private, public, uint64(0)}
 
 	return &wallet
 }
@@ -119,5 +120,15 @@ func (wallet *Wallet) GetNewAddress() string {
 	prv, pub := newKeyPair()
 	wallet.PrivateKey = prv
 	wallet.PublicKey = pub
+	wallet.Nonce = 0
 	return wallet.GetStringAddress()
+}
+
+func (wallet *Wallet) AddNonce() uint64 {
+	wallet.Nonce++
+	return wallet.Nonce
+}
+
+func (wallet *Wallet) SetNonce(nonce uint64) {
+	wallet.Nonce = nonce
 }

@@ -16,6 +16,7 @@ import (
 
 type Transaction struct {
 	ID        hash.Hash
+	Nonce     uint64
 	PublicKey []byte
 	Signature []byte
 	Timestamp int64
@@ -61,7 +62,7 @@ func DeserializeTx(buf []byte) (*Transaction, error) {
 	return &tx, nil
 }
 
-func NewTransaction(pubKey []byte, to string, value float64, data string) *Transaction {
+func NewTransaction(pubKey []byte, nonce uint64, to string, value float64, data string) *Transaction {
 
 	fromBytes := address.FromPublicKey(pubKey)
 	from := address.ToString(fromBytes)
@@ -70,6 +71,7 @@ func NewTransaction(pubKey []byte, to string, value float64, data string) *Trans
 
 	tx := Transaction{
 		ID:        *hash.ZeroHash(),
+		Nonce:     nonce,
 		PublicKey: pubKey,
 		Signature: []byte{},
 		Timestamp: now.UnixMilli(),
@@ -146,12 +148,12 @@ func (tx *Transaction) VerifySignature() bool {
 // TrimmedCopy creates a trimmed copy of Transaction to be used in signing
 // set sign & pubkey nil
 func (tx *Transaction) TrimmedCopyToSign() Transaction {
-	txCopy := Transaction{*hash.ZeroHash(), []byte{}, []byte{}, tx.Timestamp, tx.From, tx.To, tx.Fee, tx.Value, tx.Data}
+	txCopy := Transaction{*hash.ZeroHash(), tx.Nonce, []byte{}, []byte{}, tx.Timestamp, tx.From, tx.To, tx.Fee, tx.Value, tx.Data}
 	return txCopy
 }
 
 func (tx *Transaction) TrimmedCopy() Transaction {
-	txCopy := Transaction{tx.ID, tx.PublicKey, tx.Signature, tx.Timestamp, tx.From, tx.To, tx.Fee, tx.Value, tx.Data}
+	txCopy := Transaction{tx.ID, tx.Nonce, tx.PublicKey, tx.Signature, tx.Timestamp, tx.From, tx.To, tx.Fee, tx.Value, tx.Data}
 	return txCopy
 }
 

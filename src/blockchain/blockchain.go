@@ -62,7 +62,7 @@ func LoadBlockchain(chainblockstore blockstore.Blockstore) (*block.Block, *block
 		select {
 		case k, ok := <-keychan:
 			if ok == false {
-				logger.Info("iterating block store completed! ",loadedblocks," blocks are loaded")
+				logger.Info("iterating block store completed! ", loadedblocks, " blocks are loaded")
 				return head, genesis, nil
 			}
 			if k.ByteLen() == 0 {
@@ -388,8 +388,21 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 		logger.Info("Block accepted, chain head set to block height:", blkCopy.Height) //string(blkCopy.Serialize()))
 		cid, err := chain.PutBlock(&blkCopy)
 		if err != nil {
+			logger.Error("add new block to chain: ",err)
 			return nil
 		}
+		if err := chain.UpdateAccounts(blkCopy.Transactions); err != nil {
+			//TODO: Remove block from chain and roll back head
+			logger.Error("update block accounts: ",err)
+			return nil
+		}
+		reward, _ := blkCopy.Reward.Float64()
+		if err := chain.AddToAccountBalance(blkCopy.Header.Miner, reward); err != nil {
+			//TODO: Rollback accounts balances and Remove block from chain and roll back head
+			logger.Error("add block block reward to miner account: ",err)
+			return nil
+		}
+		logger.Info("Miner ", blkCopy.Header.Miner, "received", reward, "as block reward!")
 		return cid
 	}
 	return nil

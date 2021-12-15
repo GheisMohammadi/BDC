@@ -26,24 +26,18 @@ func HealthCheck(c *cli.Context) error{
 
 // SendTx <to address> <amount> -from=<from address> -memo=<some data>
 func SendTx(c *cli.Context) error {
-    if len(c.Args()) != 2 {
+    if len(c.Args()) < 2 {
         return fmt.Errorf("To and amount must be specified")
     }
     to := c.Args()[0]
-    amount := c.Args()[1]
-    var from string 
-    if c.String("from") == "" {
-        from = "default"
-    } else {
-        from = c.String("from")
-    }
-    data := c.String("some data")
+    value := c.Args()[1]
+    data := c.Args()[2]
     
+    fmt.Println("sending",value,"to",to,"...")
     var res node.SendTxResponse
     err := Call("tx/send", map[string]string{
         "to": to, 
-        "amount": amount,
-        "from": from,
+        "value": value,
         "data": data,
     }, &res)
     
@@ -125,16 +119,23 @@ func main() {
         {
         Name:   "status",
         Usage:  "shows connection status",
+        Aliases: []string{"stat"},
         Action: HealthCheck,
       },
       {
         Name:    "sendtx",
         Usage:   "send a transaction",
+        Aliases: []string{"tx"},
         Flags: []cli.Flag {
             cli.StringFlag{
-                Name: "from",
+                Name: "to",
                 Value: "",
-                Usage: "from address",
+                Usage: "to address",
+            },
+            cli.StringFlag{
+                Name: "value",
+                Value: "",
+                Usage: "BDC amount",
             },
             cli.StringFlag{
                 Name: "data",
@@ -147,11 +148,13 @@ func main() {
       {
         Name:   "newaddress",
         Usage:  "get new address",
+        Aliases: []string{"addr"},
         Action: NewAddress,
       },
       {
         Name:   "info",
         Usage:  "shows blockchain information",
+        Aliases: []string{"i"},
         Action: GetInfo,
       },
   }

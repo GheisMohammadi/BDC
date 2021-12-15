@@ -32,4 +32,6 @@ var BlockDuplicateTx = errors.New("block contains duplicate transaction")
 
 var NotEnoughAccountBalance = errors.New("Not enough account balance")
 
+var CheckAccountBalanceFailed = errors.New("checking of account balance failed")
+
 var ExchangeISNotOnline = errors.New("Exchange is not online")

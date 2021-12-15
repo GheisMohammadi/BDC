@@ -2,9 +2,12 @@ package blockchain
 
 import (
 	errors "badcoin/src/helper/error"
+	logger "badcoin/src/helper/logger"
 	"badcoin/src/transaction"
 	"encoding/json"
 	"math/big"
+
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 type Account struct {
@@ -35,26 +38,35 @@ func (chain *Blockchain) StoreAccount(acc *Account) error {
 	return chain.Accounts.Put([]byte(acc.Address), data, nil)
 }
 
-func (chain *Blockchain) AddToAccountBalance(address string, value int64) error {
+func (chain *Blockchain) AddToAccountBalance(address string, value float64) error {
 	bal := new(big.Float)
 	bal.SetInt64(0)
+	var acc *Account
 	if accbytes, err := chain.Accounts.Get([]byte(address), nil); err != nil {
-		return err
-	} else {
-		acc, _ := DeserializeAccount(accbytes)
-		val := new(big.Float)
-		val.SetInt64(value)
-		res := new(big.Float).Add(&acc.Balance, val)
-		if res.Cmp(big.NewFloat(0)) == -1 {
-			return errors.NotEnoughAccountBalance
-		}
-		acc.Balance.Set(res)
-		//fmt.Println("acc balance updated:", acc.Balance.String())
-		err = chain.StoreAccount(acc)
-		if err != nil {
+		if err != leveldb.ErrNotFound {
 			return err
 		}
+		acc = new(Account)
+		acc.Address = address
+		acc.Balance = *big.NewFloat(0)
+		acc.Nonce = uint64(0)
+	} else {
+		acc, _ = DeserializeAccount(accbytes)
 	}
+
+	val := new(big.Float)
+	val.SetFloat64(value)
+	res := new(big.Float).Add(&acc.Balance, val)
+	if res.Cmp(big.NewFloat(0)) == -1 {
+		return errors.NotEnoughAccountBalance
+	}
+	acc.Balance.Set(res)
+	logger.Info("acc balance updated:", acc.Balance.String())
+	err := chain.StoreAccount(acc)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -97,9 +109,14 @@ func (chain *Blockchain) UpdateAccounts(txs []*transaction.Transaction) error {
 		values[tx.From] = new(big.Float).Add(vf, new(big.Float).Neg(val))
 	}
 
-	for _, val := range values {
-		if val.Cmp(big.NewFloat(0)) == -1 {
-			return errors.NotEnoughAccountBalance
+	for addr, val := range values {
+		if bal,err := chain.GetAccountBalance(addr);err!=nil {
+			return errors.CheckAccountBalanceFailed
+		} else {
+			newbal := big.NewFloat(0).Add(bal,val)	
+			if newbal.Cmp(big.NewFloat(0)) == -1 {
+				return errors.NotEnoughAccountBalance
+			}
 		}
 	}
 	return nil
