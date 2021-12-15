@@ -97,7 +97,7 @@ func TestUpdateAccounts(t *testing.T) {
 
 	bc := NewBlockchain(h, bs, bswap, configs)
 
-	errUpdates := bc.UpdateAccounts(txs)
+	_,errUpdates := bc.CalcAccountsUpdates(txs)
 	if errUpdates != nil {
 		fmt.Println(errUpdates)
 		t.Error(errUpdates)

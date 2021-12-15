@@ -38,7 +38,7 @@ func (chain *Blockchain) StoreAccount(acc *Account) error {
 	return chain.Accounts.Put([]byte(acc.Address), data, nil)
 }
 
-func (chain *Blockchain) AddToAccountBalance(address string, value float64) error {
+func (chain *Blockchain) AddToAccountBalance(address string, value float64, increasenonce bool) error {
 	bal := new(big.Float)
 	bal.SetInt64(0)
 	var acc *Account
@@ -61,6 +61,9 @@ func (chain *Blockchain) AddToAccountBalance(address string, value float64) erro
 		return errors.NotEnoughAccountBalance
 	}
 	acc.Balance.Set(res)
+	if increasenonce {
+		acc.Nonce++
+	}
 	logger.Info("acc balance updated:", acc.Balance.String())
 	err := chain.StoreAccount(acc)
 	if err != nil {
@@ -93,7 +96,7 @@ func (chain *Blockchain) FetchAccountDetails(address string) (*Account, error) {
 	}
 }
 
-func (chain *Blockchain) UpdateAccounts(txs []*transaction.Transaction) error {
+func (chain *Blockchain) CalcAccountsUpdates(txs []*transaction.Transaction) (map[string]*big.Float,error) {
 	values := make(map[string]*big.Float)
 	for _, tx := range txs {
 		val := big.NewFloat(float64(tx.Value))
@@ -113,14 +116,39 @@ func (chain *Blockchain) UpdateAccounts(txs []*transaction.Transaction) error {
 		bal, err := chain.GetAccountBalance(addr)
 		if err != nil {
 			if err != leveldb.ErrNotFound {
-				return errors.CheckAccountBalanceFailed
+				return nil,errors.CheckAccountBalanceFailed
 			}
 			bal = big.NewFloat(0)
 		}
 		newbal := big.NewFloat(0).Add(bal, val)
 		if newbal.Cmp(big.NewFloat(0)) == -1 {
-			return errors.NotEnoughAccountBalance
+			return nil,errors.NotEnoughAccountBalance
 		}
 	}
+
+	for addr, val := range values {
+		bal, err := chain.GetAccountBalance(addr)
+		if err != nil {
+			if err != leveldb.ErrNotFound {
+				return nil,errors.CheckAccountBalanceFailed
+			}
+			bal = big.NewFloat(0)
+		}
+		newbal := big.NewFloat(0).Add(bal, val)
+		if newbal.Cmp(big.NewFloat(0)) == -1 {
+			return nil,errors.NotEnoughAccountBalance
+		}
+	}
+
+	return values,nil
+}
+
+func (chain *Blockchain) UpdateAccounts(values map[string]*big.Float) error {
+
+	for addr, val := range values {
+		addvalue,_ := val.Float64()
+		chain.AddToAccountBalance(addr,addvalue,true)
+	}
+
 	return nil
 }

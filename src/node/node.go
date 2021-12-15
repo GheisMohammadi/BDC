@@ -260,7 +260,7 @@ func (node *Node) ListenTransactions(ctx context.Context) {
 				panic(err)
 			}
 			node.mempool.AddTx(tx)
-			logger.Info("Tx received over network, added to mempool:", tx)
+			logger.Info("Tx received over network, added to mempool:", string(tx.Serialize()))
 		}
 	}()
 }

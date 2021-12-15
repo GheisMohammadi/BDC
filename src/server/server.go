@@ -5,6 +5,7 @@ import (
 	node "badcoin/src/node"
 	"context"
 	"encoding/json"
+	"math/big"
 
 	//"errors"
 	"net/http"
@@ -78,10 +79,10 @@ func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("call sendtx ", val, " BDC to", to)
 
-	value, err := strconv.Atoi(val)
+	value, ok := big.NewFloat(0).SetString(val) //strconv.Atoi(val)
 	// amt, err := strconv.ParseInt(amount, 10, 64)
-	if err != nil {
-		panic(err)
+	if ok == false {
+		panic("invalid tx value")
 	}
 
 	wallet := srv.Node.GetWallet()
@@ -92,14 +93,15 @@ func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 	// 	panic(errors.New("no access to this wallet address"))
 	// }
 	//srv.Node.SendTransaction()
-	tx := transaction.NewTransaction(pubKey, nonce, to, float64(value), data)
+	v,_ := value.Float64()
+	tx := transaction.NewTransaction(pubKey, nonce, to, v, data)
 	tx.Sign(wallet.PrivateKey)
 
 	resp := srv.Node.SendTransaction(tx)
 	if resp != nil {
 		wallet.AddNonce()
 	}
-	err = json.NewEncoder(w).Encode(resp)
+	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		panic(err)
 	}

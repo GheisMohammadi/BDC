@@ -4,6 +4,7 @@ import (
 	hash "badcoin/src/helper/hash"
 	"badcoin/src/transaction"
 	"math/big"
+	logger "badcoin/src/helper/logger"
 )
 
 type getAcc func(addr string) (*big.Float, uint64, error)
@@ -39,6 +40,8 @@ func (mempool *Mempool) SelectTransactions(f getAcc) []*transaction.Transaction 
             //value should be less than balance and also checking the nonce 
 			if bal.Cmp(big.NewFloat(tx.Value)) >= 0 && tx.Nonce == nonce+1 {
 				txs = append(txs, &tx)
+			} else {
+				logger.Info("tx with value:",tx.Value,"rejected from mempool. acc balance is: ", bal.String()," nonce: ",tx.Nonce," and account nonce is: ",nonce)
 			}
 		}
 	}

@@ -17,7 +17,7 @@ var (
 	ErrorNotExistsWalletFile = errors.New("not exists wallet file!")
 )
 
-const walletFileFormat = "dotwallet_%s.key"
+const walletFileFormat = "bdc_wallet_%s.wal"
 
 // WalletMap stores a collection of wallets
 type WalletSet struct {

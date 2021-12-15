@@ -243,11 +243,26 @@ func (chain *Blockchain) SaveBlockIndex(blk *block.Block) error {
 		}
 	}
 
-	errUpdateAccounts := chain.UpdateAccounts(blk.Transactions)
-	if errUpdateAccounts != nil {
-		return errUpdateAccounts
+	//update accounts
+	if values, err := chain.CalcAccountsUpdates(blk.Transactions); err != nil {
+		//TODO: Remove block from chain and roll back head
+		logger.Error("update block accounts: ", err)
+		return err
+	} else {
+		err = chain.UpdateAccounts(values)
+		if err != nil {
+			return err
+		}
 	}
+	reward, _ := blk.Reward.Float64()
+	if err := chain.AddToAccountBalance(blk.Header.Miner, reward, false); err != nil {
+		//TODO: Rollback accounts balances and Remove block from chain and roll back head
+		logger.Error("add block block reward to miner account: ", err)
+		return nil
+	}
+	logger.Info("Miner ", blk.Header.Miner, "received", reward, "as block reward!")
 
+	//store index
 	err := chain.BlockIndex.Put(heightbytes, hashbytes, nil)
 	if err != nil {
 		return err
@@ -388,21 +403,9 @@ func (chain *Blockchain) AddBlock(blk *block.Block) *cid.Cid {
 		logger.Info("Block accepted, chain head set to block height:", blkCopy.Height) //string(blkCopy.Serialize()))
 		cid, err := chain.PutBlock(&blkCopy)
 		if err != nil {
-			logger.Error("add new block to chain: ",err)
+			logger.Error("add new block to chain: ", err)
 			return nil
 		}
-		if err := chain.UpdateAccounts(blkCopy.Transactions); err != nil {
-			//TODO: Remove block from chain and roll back head
-			logger.Error("update block accounts: ",err)
-			return nil
-		}
-		reward, _ := blkCopy.Reward.Float64()
-		if err := chain.AddToAccountBalance(blkCopy.Header.Miner, reward); err != nil {
-			//TODO: Rollback accounts balances and Remove block from chain and roll back head
-			logger.Error("add block block reward to miner account: ",err)
-			return nil
-		}
-		logger.Info("Miner ", blkCopy.Header.Miner, "received", reward, "as block reward!")
 		return cid
 	}
 	return nil
