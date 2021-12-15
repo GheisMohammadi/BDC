@@ -53,6 +53,7 @@ type Node struct {
 	blockchain *blockchain.Blockchain
 	pubsub     *floodsub.PubSub
 	wallet     *wallet.Wallet
+	walletset  *wallet.WalletSet
 	pow        *proofofwork.ProofOfWork
 }
 
@@ -178,11 +179,25 @@ func CreateNewNode(ctx context.Context, configs *config.Configurations) *Node {
 	blockchain.Init()
 	chain := blockchain.NewBlockchain(newNode, chainblockstore, bswap, configs)
 
+	ws, errws := wallet.LoadWallets(configs.ID)
+	if errws != nil {
+		logger.Error("loading wallet set failed")
+		panic(errws)
+	}
+	if len(ws.Wallets) == 0 {
+		ws.NodeID = configs.ID
+		wal := ws.CreateWallet()
+		ws.SetMinerAddress(wal.GetStringAddress())
+		ws.SaveToFile()
+	}
+	mainwal := ws.GetWallet(ws.MinerAddress)
+
 	node.p2pNode = newNode
 	node.mempool = mempool.NewMempool()
 	node.pubsub = pubsub
 	node.blockchain = chain
-	node.wallet = wallet.NewWallet()
+	node.wallet = mainwal
+	node.walletset = ws
 
 	node.ListenBlocks(ctx)
 	node.ListenTransactions(ctx)
@@ -283,11 +298,11 @@ func (node *Node) CreateNewBlock() *block.Block {
 	blk.Height = height
 	blk.PrevCid = node.blockchain.GetBlockCid(node.blockchain.Head)
 	blk.Reward = node.blockchain.CalcReward(blk.Height)
-	getBalance := func(addr string) (*big.Float,uint64,error){
-		if acc,err := node.blockchain.FetchAccountDetails(addr); err!=nil {
-			return nil,0,err
+	getBalance := func(addr string) (*big.Float, uint64, error) {
+		if acc, err := node.blockchain.FetchAccountDetails(addr); err != nil {
+			return nil, 0, err
 		} else {
-			return &acc.Balance,acc.Nonce,nil
+			return &acc.Balance, acc.Nonce, nil
 		}
 	}
 	blk.Transactions = node.mempool.SelectTransactions(getBalance)
@@ -325,9 +340,9 @@ func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 			//panic(errors.New("Sending tx failed, check balance failed"))
 		} else {
 			if bal.Cmp(big.NewFloat(tx.Value)) == -1 {
-				logger.Info("Sending transaction failed, not enough balance:",bal.String())
+				logger.Info("Sending transaction failed, not enough balance:", bal.String())
 				return nil
-				//panic(errors.New("Sending tx failed, account doesn't have enough balance"))	
+				//panic(errors.New("Sending tx failed, account doesn't have enough balance"))
 			}
 		}
 		//TODO: validate TO address

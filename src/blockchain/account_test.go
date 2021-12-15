@@ -53,7 +53,7 @@ func TestAccount(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = bc.AddToAccountBalance(addr, 1500)
+	err = bc.AddToAccountBalance(addr, 1500, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -97,7 +97,7 @@ func TestUpdateAccounts(t *testing.T) {
 
 	bc := NewBlockchain(h, bs, bswap, configs)
 
-	_,errUpdates := bc.CalcAccountsUpdates(txs)
+	_, errUpdates := bc.CalcAccountsUpdates(txs)
 	if errUpdates != nil {
 		fmt.Println(errUpdates)
 		t.Error(errUpdates)

@@ -17,11 +17,14 @@ func TestToAddress(t *testing.T) {
 	address := string(w.GetAddress())
 	data := getEncodeBytes(w)
 	fmt.Println(save2File(address, data))
+	if err := os.RemoveAll("bdc_wallet"); err != nil {
+		t.Error(err)
+	}	
 }
 
 func save2File(address string, data []byte) (string, error) {
-	pathDir := filepath.Dir("d://dotechnology/genesis-coin/")
-	logFile := "d://dotechnology/genesis-coin/" + address + ".key"
+	pathDir := filepath.Dir("bdc_wallet/wallet/")
+	logFile := "bdc_wallet/log/" + address + ".key"
 	if !existFile(pathDir) {
 		//create path
 		err := os.MkdirAll(pathDir, 0777)

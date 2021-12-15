@@ -96,7 +96,9 @@ func (ws *WalletSet) GetWallet(address string) *Wallet {
 
 // LoadFromFile loads wallets from the file
 func (ws *WalletSet) LoadFromFile(nodeID string) error {
-	walletFile := getWalletFileName(nodeID)
+	walletFileName := getWalletFileName(ws.NodeID)
+	walletFile := "data/" + walletFileName
+	
 	if !file.IsExist(walletFile) {
 		return ErrorNotExistsWalletFile
 	}
@@ -124,7 +126,8 @@ func (ws *WalletSet) LoadFromFile(nodeID string) error {
 // SaveToFile saves wallets to a file
 func (ws *WalletSet) SaveToFile() {
 	var content bytes.Buffer
-	walletFile := getWalletFileName(ws.NodeID)
+	walletFileName := getWalletFileName(ws.NodeID)
+	walletFile := "data/" + walletFileName
 
 	gob.Register(elliptic.P256())
 
