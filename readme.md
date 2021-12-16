@@ -5,18 +5,18 @@ A simple and integrity PoW blockchain implementation in Golang using ipfs/libp2p
 
 
 - [Description](#description)
-- [Project Requirements](#requirements)
+- [Project Requirements](#project-requirements)
 - [Keys](#keys)
-- [Building the source](#building)
+- [Building the source](#building-the-source)
 - [Test](#test)
-- [P2P Networking](#networking)
-- [Block Storage](#storage)
+- [P2P Networking](#p2p-networking)
+- [Block Storage](#block-storage)
 - [Mining](#mining)
-- [Block Structure](#block)
+- [Block Structure](#block-structure)
 - [Transaction](#transaction)
 - [Wallet](#wallet)
 - [CLI](#cli)
-- [Server Endpoints](#rpc)
+- [Server Endpoints](#server-endpoints)
 
 # Description
 This is a sample blockchain project which supports a new AltCoin - BadCoin (BDC). 
@@ -250,3 +250,11 @@ GLOBAL OPTIONS:
 
 /Address/New  Generate a new address
 ```
+
+ url  			| method 	| 	parameters 	| 	description	                       |
+ ---------------|-----------|---------------|--------------------------------------|
+ /Info:         | Get       | -             |return BDC node info                  |
+ /Block         | Get       | height        |returns a certain block heigh details |
+ /Genesis       | Get       | -             |returns genesis block                 |
+ /Tx/Send       | Post      | to,value,data |send a new transaction                |
+ /Address/New   | Post      | -             |generate a new address                |
