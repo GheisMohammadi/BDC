@@ -4,6 +4,7 @@ import (
 	"badcoin/src/helper/uuid"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"math/big"
 )
@@ -29,4 +30,11 @@ func Int64ToByteArray(num int64) []byte {
 	numbig.SetInt64(num)
 	numbytes := numbig.Bytes()
 	return numbytes
+}
+
+func RoundBigFloat(x *big.Float) *big.Float {
+	newdec := fmt.Sprintf("%.8f\n", x)
+	res := new(big.Float)
+	res.SetString(newdec)
+	return res
 }

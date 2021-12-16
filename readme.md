@@ -134,8 +134,8 @@ Starts a libp2p node. Sets up pubsub, subscribes to "blocks" and "transactions" 
 Some of the key features of libp2p are as follows:
 - encrypted connections
 - able to work offline
-- It's easy to switch between transporters 
-- very flexible for switching storages (TCP, UDP, Relay, ...)
+- It's easy to switch between transporters (TCP, UDP, Relay, ...)
+- very flexible for switching storages 
 - can be used as private and public network
 - supports different routing (kademlia, DHT, ...) and some other useful Mock routing
 

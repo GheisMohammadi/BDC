@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	block "badcoin/src/block"
 	blockchain "badcoin/src/blockchain"
+	address "badcoin/src/helper/address"
 	logger "badcoin/src/helper/logger"
 	mempool "badcoin/src/mempool"
 	transaction "badcoin/src/transaction"
@@ -336,41 +336,55 @@ func (node *Node) GetNewAddress() *NewAddressResponse {
 
 func (node *Node) SendTransaction(tx *transaction.Transaction) *SendTxResponse {
 	// Check that node has key to send tx from address
-	if node.wallet.GetStringAddress() == tx.From {
-		//check account balance
-		if bal, err := node.blockchain.GetAccountBalance(tx.From); err != nil {
-			logger.Info("Sending transaction failed, check balance failed")
-			return nil
-			//panic(errors.New("Sending tx failed, check balance failed"))
-		} else {
-			if bal.Cmp(big.NewFloat(tx.Value)) == -1 {
-				logger.Info("Sending transaction failed, not enough balance:", bal.String())
-				return nil
-				//panic(errors.New("Sending tx failed, account doesn't have enough balance"))
-			}
-		}
-		//check nonce
-		if nonce,err:=node.blockchain.GetAccountNonce(tx.From); err!=nil {
-			logger.Info("Checking account nonce failed, check balance failed")
-			return nil
-		} else {
-			if tx.Nonce!=nonce+1 {
-				logger.Info("Tx nonce is invalid. Current account nonce is: ", nonce," but tx nonce is: ",tx.Nonce)
-				return nil
-			}
-		}
-		//TODO: validate TO address
-		var res SendTxResponse
-		txid := tx.GetTxid()
-		node.mempool.SetTransaction(txid, *tx)
-		data := tx.Serialize()
-		node.pubsub.Publish("transactions", data)
-		res.Txid = tx.GetTxidString()
-		return &res
-	} else {
-		logger.Info("Sending transaction failed")
-		panic(errors.New("Sending tx failed, no key present in wallet"))
+	//if node.wallet.GetStringAddress() == tx.From {
+
+	//validate transaction signature
+	signisvalid := tx.VerifySignature()
+	if signisvalid == false {
+		logger.Info("Sending transaction failed, TX signature is not valid")
+		return nil
 	}
+	//check address to
+	validateaddr := address.ValidateAddress(tx.To)
+	if validateaddr == false {
+		logger.Info("Sending transaction failed, TX dest address is not valid")
+		return nil
+	}
+	//check account balance
+	if bal, err := node.blockchain.GetAccountBalance(tx.From); err != nil {
+		logger.Info("Sending transaction failed, check balance failed")
+		return nil
+		//panic(errors.New("Sending tx failed, check balance failed"))
+	} else {
+		if bal.Cmp(big.NewFloat(tx.Value)) == -1 {
+			logger.Info("Sending transaction failed, not enough balance:", bal.String())
+			return nil
+			//panic(errors.New("Sending tx failed, account doesn't have enough balance"))
+		}
+	}
+	//check nonce
+	if nonce, err := node.blockchain.GetAccountNonce(tx.From); err != nil {
+		logger.Info("Checking account nonce failed, check balance failed")
+		return nil
+	} else {
+		if tx.Nonce != nonce+1 {
+			logger.Info("Tx nonce is invalid. Current account nonce is: ", nonce, " but tx nonce is: ", tx.Nonce)
+			return nil
+		}
+	}
+	//TODO: validate TO address
+	var res SendTxResponse
+	txid := tx.GetTxid()
+	node.mempool.SetTransaction(txid, *tx)
+	data := tx.Serialize()
+	node.pubsub.Publish("transactions", data)
+	res.Txid = tx.GetTxidString()
+	return &res
+
+	// } else {
+	// 	logger.Info("Sending transaction failed")
+	// 	panic(errors.New("Sending tx failed, no key present in wallet"))
+	// }
 }
 
 func (node *Node) GetInfo() *GetInfoResponse {
