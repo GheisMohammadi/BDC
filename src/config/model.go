@@ -12,7 +12,7 @@ type Configurations struct {
 	ConfigFile string
 	ID         string
 	Genesis    Genesis
-	MiningSet  MiningSet
+	Mining     Mining
 	RpcSet     RpcSet
 	Storage    Storage
 }
@@ -25,8 +25,8 @@ type Genesis struct {
 	Message string
 }
 
-// MiningSet mining config
-type MiningSet struct {
+// Mining mining config
+type Mining struct {
 	Enabled                     bool
 	ExpectedMiningTimeInSeconds uint64
 }

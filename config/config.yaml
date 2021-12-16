@@ -10,9 +10,9 @@ Genesis:
   Reward: 100
   Message: "it's inevitable"
   
-MiningSet:
+Mining:
   Enabled: true
-  ExpectedMiningTimeInSeconds: 15
+  ExpectedMiningTimeInSeconds: 30
 
 RpcSet:
   Enabled: true

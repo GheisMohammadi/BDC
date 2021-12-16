@@ -5,20 +5,21 @@ import (
 
 	// "math/big"
 	block "badcoin/src/block"
+	config "badcoin/src/config"
 	hash "badcoin/src/helper/hash"
 	logger "badcoin/src/helper/logger"
 	merkle "badcoin/src/merkle"
 	proofofwork "badcoin/src/pow"
 )
 
-func (node *Node) StartMiner() {
+func (node *Node) StartMiner(configs *config.Configurations) {
 	c := make(chan *block.Block)
 	node.pow = proofofwork.NewProofOfWorkT(1)
-	go node.Mine(c)
+	go node.Mine(c, configs.Mining.ExpectedMiningTimeInSeconds)
 }
 
-func (node *Node) Mine(c chan *block.Block) {
-	go node.FindSolsHash(c)
+func (node *Node) Mine(c chan *block.Block, blocktime uint64) {
+	go node.FindSolsHash(c, blocktime)
 	for {
 		select {
 		case blk := <-c:
@@ -28,7 +29,7 @@ func (node *Node) Mine(c chan *block.Block) {
 	}
 }
 
-func (node *Node) FindSolsHash(c chan *block.Block) {
+func (node *Node) FindSolsHash(c chan *block.Block, expectedblocktime uint64) {
 
 	blk := node.CreateNewBlock()
 	if blk == nil {
@@ -61,7 +62,7 @@ func (node *Node) FindSolsHash(c chan *block.Block) {
 			logger.Info("Block #", blk.Height, ": ", blkstr)
 			//blk.Header.Nonce = make([]byte, 32)
 		}
-		time.Sleep(time.Duration(10) * time.Second)
+		time.Sleep(time.Duration(expectedblocktime) * time.Second)
 		blk = node.CreateNewBlock()
 		if blk == nil {
 			logger.Error("Can't create new block, Mining will be stopped")

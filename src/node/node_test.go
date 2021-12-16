@@ -11,7 +11,7 @@ func TestBlockchain(t *testing.T) {
 	ctx := context.Background()
 	configs, _ := config.Init("")
 	testNode := CreateNewNode(ctx, configs)
-	testNode.StartMiner()
+	testNode.StartMiner(configs)
 	t.Log(testNode)
 
 	if err := os.RemoveAll("data"); err != nil {

@@ -39,14 +39,14 @@ func main() {
 
 	//create Node
 	ctx := context.Background()
-	node := node.CreateNewNode(ctx,Configs)
+	node := node.CreateNewNode(ctx, Configs)
 
-	if Configs.MiningSet.Enabled == true {
+	if Configs.Mining.Enabled == true {
 		logger.Info("start mining...")
-		node.StartMiner()
+		node.StartMiner(Configs)
 	}
 	//Start server
-	srv := server.CreateNewServer(ctx,node,Configs.RpcSet.Port)
+	srv := server.CreateNewServer(ctx, node, Configs.RpcSet.Port)
 	srv.ListenAndServe()
 
 }

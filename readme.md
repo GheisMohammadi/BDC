@@ -226,11 +226,12 @@ VERSION:
    0.0.1
 
 COMMANDS:
-   status, stat      shows connection status
-   sendtx, tx        send a transaction
-   newaddress, addr  get new address
-   info, i           shows blockchain information
-   help, h           Shows a list of commands or help for one command
+   status, stat       shows connection status
+   sendtx, tx         send a transaction
+   sendsignedtx, stx  send a signed transaction
+   newaddress, addr   get new address
+   info, i            shows blockchain information
+   help, h            Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --help, -h     show help
