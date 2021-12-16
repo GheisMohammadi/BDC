@@ -239,18 +239,6 @@ GLOBAL OPTIONS:
 
 # Server Endpoints
 
-```
-/Info:    return BDC node info
-
-/Block    returns a certain block heigh details
-
-/Genesis  returns genesis block
-
-/Tx/Send  send a new transaction
-
-/Address/New  Generate a new address
-```
-
  url  			| method 	| 	parameters 	| 	description	                       |
  ---------------|-----------|---------------|--------------------------------------|
  /Info:         | Get       | -             |return BDC node info                  |
