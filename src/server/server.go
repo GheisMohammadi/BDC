@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"math/big"
-
+	b64 "encoding/base64"
 	//"errors"
 	"net/http"
 	"strconv"
@@ -43,6 +43,7 @@ func MakeMuxRouter(server *Server) http.Handler {
 
 	//Setup Post Endpoints
 	muxRouter.HandleFunc("/tx/send", server.HandleSendTx).Methods("POST")
+	muxRouter.HandleFunc("/tx/signed/send", server.HandleSendSignedTx).Methods("POST")
 	muxRouter.HandleFunc("/address/new", server.HandleNewAddress).Methods("POST")
 
 	return muxRouter
@@ -76,7 +77,7 @@ func (srv *Server) HandleSendSignedTx(w http.ResponseWriter, r *http.Request) {
 	pubKeystr := r.FormValue("pubKey")
 	to := r.FormValue("to")
 	val := r.FormValue("value")
-	signaturestr := r.FormValue("signature")
+	signaturestr64 := r.FormValue("signature")
 	data := r.FormValue("data")
 
 	logger.Info("call sendtx ", val, " BDC to", to)
@@ -86,12 +87,15 @@ func (srv *Server) HandleSendSignedTx(w http.ResponseWriter, r *http.Request) {
 		panic("invalid tx value")
 	}
 
+    signaturestr, _ := b64.StdEncoding.DecodeString(signaturestr64)
+
+
 	wallet := srv.Node.GetWallet()
 	pubKey := []byte(pubKeystr)
 	nonce := wallet.Nonce + 1
 	signature := []byte(signaturestr)
-	
-	v,_ := value.Float64()
+
+	v, _ := value.Float64()
 	tx := transaction.NewSignedTransaction(pubKey, nonce, to, v, signature, data)
 
 	resp := srv.Node.SendTransaction(tx)
@@ -127,7 +131,7 @@ func (srv *Server) HandleSendTx(w http.ResponseWriter, r *http.Request) {
 	// 	panic(errors.New("no access to this wallet address"))
 	// }
 	//srv.Node.SendTransaction()
-	v,_ := value.Float64()
+	v, _ := value.Float64()
 	tx := transaction.NewTransaction(pubKey, nonce, to, v, data)
 	tx.Sign(wallet.PrivateKey)
 
