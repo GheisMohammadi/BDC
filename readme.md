@@ -245,5 +245,5 @@ GLOBAL OPTIONS:
  /Block           | Get       | height                         |returns a certain block heigh details |
  /Genesis         | Get       | -                              |returns genesis block                 |
  /Tx/Send         | Post      | to,value,data                  |send a new transaction (miner wallet) |
- /Signed/Tx/Send  | Post      | to,value,pubkey,signature,data |send a new signed transaction         |
+ /Tx/Signed/Send  | Post      | to,value,pubkey,signature,data |send a new signed transaction         |
  /Address/New     | Post      | -                              |generate a new address                |
